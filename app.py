@@ -176,18 +176,45 @@ RESERVE_ACTUAL = pd.DataFrame({
 })
 
 RESERVE = pd.DataFrame({
-    "Year":   ["Yr 1","Yr 2","Yr 3","Yr 4","Yr 5","Yr 6","Yr 7","Yr 8"],
-    "Balance":[734280,769342,809824,626409,428488,236185,221978,174855],
-    "Draw":   [0,0,4227,229410,242554,235422,55896,89523],
+    # SOURCE: CNA Replacement Reserve Analysis Funding Schedule (D3G, 2025-2010)
+    # Initial Deposit: $700,000 | Annual Deposit: $34,000 (+2.26%/yr) | Inflation: 6.81%
+    "Year":   ["Yr 1","Yr 2","Yr 3","Yr 4","Yr 5","Yr 6","Yr 7","Yr 8","Yr 9","Yr 10"],
+    "Balance":[734280,769342,809824,626409,428488,236185,221978,174855,138243,112936],
+    "Draw":   [0,     0,     4227,  229410,242554,235422,55896, 89523, 79348, 68527],
+    "Min_Req":[59861, 63937, 65389, 66873, 68391, 69944, 71531, 73155, 74816, 76514],
 })
 
 COMPONENTS = pd.DataFrame({
-    "Component":      ["Elevators (2)","Boiler System","HVAC Units (77)","Roof","Plumbing Infra","Common Area Flooring","Exterior/Facade","Windows"],
-    "Useful Life":    [25,20,15,20,30,10,25,25],
-    "Remaining Life": [8,5,4,10,15,3,12,18],
-    "Replacement $":  [350000,80000,154000,120000,200000,45000,180000,95000],
-    "Reserve/Unit/Yr":[257,59,151,88,98,66,106,56],
+    # SOURCE: D3G CNA Report, Project 2025-2010, Inspection Oct 14, 2025
+    "Component": [
+        "Elevators - Passenger (2x 2,000-lb)",
+        "Elevator - Freight/Service (1)",
+        "Elevator Cab Interior Finish (3)",
+        "HVAC Heat Pumps - Units (68)",
+        "HVAC Heat Pumps - Common (9)",
+        "Gas Furnace - Units (68)",
+        "Gas Furnace - Common (9)",
+        "Rooftop Package Unit",
+        "Boiler - Gas DHW (1)",
+        "Hot Water Storage Tank",
+        "PVC/TPO Roof Membrane",
+        "Windows - Aluminum (193+20)",
+        "Fire Alarm Control Panel",
+        "Emergency Call System (68 units)",
+        "Electric Water Heater - Common",
+        "Unit Entry Doors (68)",
+        "VCT Flooring - Units (66 x 1-BR)",
+        "Kitchen Cabinets - Units (68)",
+        "Refrigerators - Units (68)",
+        "Electric Ranges - Units (68)",
+    ],
+    "Estimated Useful Life": [30,30,20,15,15,20,20,15,25,15,15,40,15,15,15,35,20,25,15,25],
+    "Remaining Life (yrs)":  [5, 5, 4, 8, 8,10,10,10, 8, 5, 5,14, 8, 5,14,10, 8, 0, 0, 0],
+    "Total Replacement $":   [369508,149498,11610,95632,12657,48158,6374,3500,9700,2000,72290,78716,3541,13158,1161,13631,44699,408000,39372,23528],
+    "CNA Year Due":          ["Yr 5","Yr 5","Yr 4","Yr 8","Yr 8","Yr 10","Yr 10","Yr 10","Yr 8","Yr 5","Yr 5","Yr 14","Yr 8","Yr 5","Yr 14","Yr 10","Yr 9","Now","Now","Now"],
 })
+COMPONENTS["Reserve/Unit/Yr"] = (COMPONENTS["Total Replacement $"] / 68 / COMPONENTS["Estimated Useful Life"]).round(0).astype(int)
+COMPONENTS["Annual Total"] = COMPONENTS["Reserve/Unit/Yr"] * UNITS
 COMPONENTS["Annual Total"] = COMPONENTS["Reserve/Unit/Yr"]*UNITS
 TOTAL_RES_PU  = int(COMPONENTS["Reserve/Unit/Yr"].sum())
 TOTAL_RES_ANN = int(COMPONENTS["Annual Total"].sum())
@@ -417,7 +444,7 @@ with tab1:
     for level,text in [
         ("red","🔴 CRITICAL — DD3 Demand Charge winter spike CONFIRMED: $2,707 in BOTH Feb-25 AND Jan-26 — identical amount, recurring winter pattern. Demand controller needed urgently. $4-8K install saves $5-12K/yr."),
         ("red","🔴 CRITICAL — Office Account Apr-26: $405.54 past due + $19.32 penalty. Disconnect date was Apr-23-26. Confirm payment cleared with Kenya Owens immediately."),
-        ("red","🔴 CRITICAL — HUD Life Safety violations open: GFCI $4,760 + Smoke detectors $2,380 + UFAS $5,000 = $13,540. Must resolve before next HUD inspection."),
+        ("red","🔴 CRITICAL — CNA Critical Repairs (D3G, Oct 14 2025): GFCI outlets 136 units ($4,760) + Smoke detectors 68 units ($2,380) + UFAS accessibility 4 units ($5,000) + Code violation-pallets ($250) + Audio/visual alarms ($400) + UFAS common areas ($1,320) = TOTAL $14,110. Must resolve before next HUD inspection."),
         ("red","🔴 CRITICAL — GL Anomaly Feb-26: Deleted batch #1419 ($8,978.45) — Mar bill accidentally entered Feb-16, deleted, reversed Feb-28. Net=Zero but messy audit trail for HUD."),
         ("yellow","🟡 HIGH — Jan-26 double propane delivery: 409.6 gal/$1,001 in 19 days. Normal = 150-200 gal/mo. Investigate tank leak or fill error with Blossman."),
         ("yellow","🟡 HIGH — Elevator replacement Yr 4-6: $707K draw drops reserves $810K → $174K. HVAC stress today = risk of accelerated timeline."),
@@ -461,11 +488,18 @@ with tab2:
         fig_va=go.Figure()
         cat_list=list(t12_tots.keys())
         fig_va.add_bar(x=cat_list,y=[t12_tots[c] for c in cat_list],name="T12 Actual",
-                       marker_color=["#ef4444" if t12_tots[c]>t12_buds[c] else "#22c55e" for c in cat_list])
+                       marker_color=["#ef4444" if t12_tots[c]>t12_buds[c] else "#22c55e" for c in cat_list],
+                       marker_line=dict(color="white",width=1))
         fig_va.add_bar(x=cat_list,y=[t12_buds[c] for c in cat_list],name="T12 Budget",
-                       marker_color="rgba(0,0,0,0)",marker_line=dict(color="#94a3b8",width=2))
-        fig_va.update_layout(barmode="overlay",height=290,title="T12 Actual vs Annual Budget",
-                             margin=dict(t=35,b=10),yaxis_title="$",legend=dict(orientation="h",y=-0.28))
+                       marker_color="#334155",opacity=0.8,marker_line=dict(color="white",width=1))
+        for c in cat_list:
+            var=t12_tots[c]-t12_buds[c]
+            fig_va.add_annotation(x=c,y=max(t12_tots[c],t12_buds[c])+300,
+                text=f"<b>${var:+,.0f}</b>",showarrow=False,
+                font=dict(size=10,color="#dc2626" if var>0 else "#16a34a"),yanchor="bottom")
+        fig_va.update_layout(barmode="group",height=310,title="T12 Actual vs Annual Budget",
+                             margin=dict(t=35,b=10),yaxis_title="$",
+                             legend=dict(orientation="h",y=-0.28),bargap=0.2,bargroupgap=0.05)
         st.plotly_chart(fig_va,use_container_width=True)
     with va2:
         vd=[{"Category":c,"T12 Actual":f"${t12_tots[c]:,.0f}","T12 Budget":f"${t12_buds[c]:,.0f}",
@@ -705,17 +739,19 @@ with tab4:
     fig_r=go.Figure()
     fig_r.add_bar(x=RESERVE["Year"],y=RESERVE["Balance"],name="Reserve Balance",
                   marker_color=["#16a34a" if b>400000 else "#f59e0b" if b>200000 else "#ef4444" for b in RESERVE["Balance"]])
-    fig_r.add_scatter(x=RESERVE["Year"],y=RESERVE["Draw"],name="Annual Draw",
+    fig_r.add_scatter(x=RESERVE["Year"],y=RESERVE["Draw"],name="Annual Draw (Inflated)",
                       line=dict(color="#ef4444",dash="dash",width=2),mode="lines+markers")
-    fig_r.add_hline(y=200000,line_dash="dot",line_color="#f59e0b",
-                    annotation_text="⚠️ Caution $200K",annotation_position="top left")
-    fig_r.update_layout(height=350,margin=dict(t=20,b=10),legend=dict(orientation="h",y=-0.18),yaxis_title="$")
+    fig_r.add_scatter(x=RESERVE["Year"],y=RESERVE["Min_Req"],name="HUD Min Balance Required",
+                      line=dict(color="#f59e0b",dash="dot",width=2),mode="lines+markers",marker=dict(size=5))
+    fig_r.update_layout(height=370,margin=dict(t=20,b=10),legend=dict(orientation="h",y=-0.22),yaxis_title="$",
+                        title="10-Year Reserve Balance — CNA Funding Schedule (D3G 2025)")
     st.plotly_chart(fig_r,use_container_width=True)
 
     st.markdown("""<div class="alert-yellow">
-        🟡 <strong>Elevator Risk:</strong> $707K draw in Yr 4-6 drops balance $810K → $174K.
-        HVAC stress (DD3 spikes) = mechanical wear = possible accelerated timeline.
-        Recommend CNA elevator inspection before Yr 3.
+        🟡 <strong>CNA Finding (D3G, Oct 2025):</strong> Elevator replacement (Yr 4-6) = $519K draw (2 passenger + 1 freight).
+        Balance drops from $810K → $112K by Yr 10. However HUD minimum balance maintained throughout all 10 years.
+        Initial deposit $700K | Annual deposit $34,000 (+2.26%/yr) | Inflation assumption: 6.81%.
+        Recommend physical elevator inspection before Yr 3 given current HVAC stress.
     </div>""",unsafe_allow_html=True)
 
     st.markdown('<p class="section-title">🔧 Component Reserve Schedule</p>',unsafe_allow_html=True)
