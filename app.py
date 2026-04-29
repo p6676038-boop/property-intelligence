@@ -607,7 +607,7 @@ with tab2:
     ll1,ll2=st.columns(2)
     with ll1:
         st.markdown("**⚠️ High-Risk Components (≤5 yrs remaining):**")
-        hr=COMPONENTS[COMPONENTS["Remaining Life"]<=5][["Component","Remaining Life","Replacement $","Reserve/Unit/Yr"]]
+        hr=COMPONENTS[COMPONENTS["Remaining Life (yrs)"]<=5][["Component","Remaining Life","Total Replacement $","Reserve/Unit/Yr"]]
         st.dataframe(hr,use_container_width=True,hide_index=True)
     with ll2:
         avg_util=T12["Total_Util"].mean(); mo_res=TOTAL_RES_ANN/12
@@ -762,7 +762,7 @@ with tab4:
             if v<=10: return "background-color:#fffbeb;color:#92400e"
             return "background-color:#f0fdf4;color:#15803d"
         except: return ""
-    st.dataframe(COMPONENTS.style.map(sty_rem,subset=["Remaining Life"]),use_container_width=True,hide_index=True)
+    st.dataframe(COMPONENTS.style.map(sty_rem,subset=["Remaining Life (yrs)"]),use_container_width=True,hide_index=True)
 
     cc1,cc2,cc3=st.columns(3)
     with cc1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Required/Unit/Yr</div><div class="kpi-value">${TOTAL_RES_PU:,}</div></div>',unsafe_allow_html=True)
