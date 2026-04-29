@@ -69,24 +69,110 @@ FEB26 = dict(
 JAN26=dict(revenue=67199.53,noi=33606.55,net_income=15104.44,
            total_util=10221.01,elec=7709.25,water=795.26,gas=1000.82,sewer=715.68,trash=274.88)
 
+# COMPLETE BILLS DATA — from actual City of EC PDFs (City_2025.pdf + City_2026.pdf)
+# Main account (37-0345000-01) + Office account (37-0380000-01) + Blossman Gas
+# Period = billing end month
 BILLS = pd.DataFrame({
-    "Month":      ["Nov-24","Dec-24","Jan-25","Feb-25","Mar-25","Apr-25","May-25","Aug-25","Sep-25","Oct-25","Dec-25","Jan-26","Mar-26"],
-    "Main_Bill":  [4614,5876,5474,8889,8895,5095,4759,5852,6173,4951,7229.77,8550.91,7966.58],
-    "Office_Bill":[0,0,0,0,0,0,0,0,0,0,374.40,380.43,388.88],
-    "Gas_Bill":   [0,0,394,0,0,0,0,0,0,0,0,1000.82,357.86],
-    "Elec":       [2195,2763,2763,3841,3841,2235,2131,2641,2641,2140,3042.82,3480.48,3823.40],
-    "DD3":        [492,1061,1061,2707,2707,846,646,1108,1108,815,1953.56,2707.30,1784.36],
-    "Water_Units":[99]*13,
+    "Month":      ["Dec-24","Jan-25","Feb-25","Mar-25","Apr-25","May-25","Jun-25",
+                   "Jul-25","Aug-25","Sep-25","Oct-25","Nov-25","Dec-25","Jan-26","Feb-26","Mar-26"],
+    "Main_Bill":  [5474.20, 8152.34, 8889.05, 8895.28, 5095.03, 4759.04, 5190.53,
+                   6415.93, 5852.34, 5550.89, 4950.70, 5384.37, 7229.77, 8550.91, 0,       7966.58],
+    "Office_Bill":[348.73,  385.58,  404.14,  404.14,  343.59,  347.58,  357.72,
+                   379.09,  362.43,  353.02,  342.26,  340.46,  374.40,  380.43,  386.22,  388.88],
+    "Gas_Bill":   [0,       394,     0,       0,       0,       0,       0,
+                   0,       0,       0,       0,       0,       0,       1000.82, 654.54,  357.86],
+    # Electricity from main account bills (actual line items)
+    "Elec":       [2763.08, 4134.72, 3841.44, 3841.44, 2235.17, 2131.40, 2316.39,
+                   2952.58, 2641.25, 2496.87, 2140.42, 2271.27, 3042.82, 3480.48, 0,       3823.40],
+    # DD3 Demand Charge — actual from bills
+    "DD3":        [1061.39, 2092.01, 2707.30, 2707.30, 846.03,  646.06,  846.03,
+                   1292.12, 1107.53, 984.47,  815.27,  1076.77, 1953.56, 2707.30, 0,       1784.36],
+    # Water — always 99 units (estimated meter)
+    "Water_Units":[99]*16,
+    "Water_$":    [812.49]*16,
 })
 BILLS["Total_Bill"] = BILLS["Main_Bill"]+BILLS["Office_Bill"]+BILLS["Gas_Bill"]
 
+# AUDIT REPORT DATA — EisnerAmper LLP, Year ended December 31, 2025
+AUDIT = {
+    "year": "December 31, 2025",
+    "auditor": "EisnerAmper LLP, Birmingham AL",
+    "lead_accountant": "Kelli Winter, CPA",
+    "report_date": "March 26, 2026",
+    "opinion": "Unmodified (clean opinion)",
+    # Income Statement 2025 vs 2024
+    "gross_rent_2025": 384234, "gross_rent_2024": 356994,
+    "hap_subsidy_2025": 446019, "hap_subsidy_2024": 425943,
+    "total_revenue_2025": 786666, "total_revenue_2024": 782747,
+    "vacancies_2025": 76854, "vacancies_2024": 52393,
+    "util_elec_2025": 57977, "util_elec_2024": 49132,
+    "util_water_2025": 9900, "util_water_2024": 9592,
+    "util_gas_2025": 8970, "util_gas_2024": 8066,
+    "util_sewer_2025": 9412, "util_sewer_2024": 8638,
+    "total_utilities_2025": 86259, "total_utilities_2024": 75428,
+    "insurance_2025": 134382, "insurance_2024": 108976,
+    "net_loss_2025": -48411, "net_loss_2024": -25317,
+    # Balance Sheet Dec 31, 2025
+    "cash_operations": 96403,
+    "reserve_balance_dec25": 559630,
+    "reserve_balance_dec24": 554656,
+    "escrow_balance": 57506,
+    "total_assets": 3297501,
+    "mortgage_net": 3193075,
+    "members_equity": 45182,
+    # Reserve activity
+    "reserve_deposits_2025": 20340,   # $1,695/mo (old rate - full year)
+    "reserve_withdrawals_2025": 36198,
+    "reserve_interest_2025": 20832,
+    "reserve_deposits_2024": 20340,
+    "reserve_withdrawals_2024": 114550,
+    # Mortgage
+    "mortgage_original": 3278000,
+    "mortgage_rate": 5.36,
+    "mortgage_lender": "Berkadia Commercial Mortgage LLC",
+    "mortgage_date": "November 9, 2023",
+    "mortgage_maturity": "December 1, 2033",
+    "interest_only_until": "January 1, 2029",
+    "pi_payment": 17304,
+}
+
+# RENT SCHEDULE — HUD Form 92458, effective May 1, 2025
+RENT_SCHEDULE = {
+    "effective_date": "May 1, 2025",
+    "hap_contract": "NC19H148016",
+    "contract_through": "April 30, 2026",
+    "unit_mix": [
+        {"type": "Efficiency",      "count": 7,  "contract_rent": 832,  "monthly": 5824},
+        {"type": "1 Bedroom",       "count": 59, "contract_rent": 952,  "monthly": 56168},
+        {"type": "2 Bedroom Unsub", "count": 2,  "contract_rent": 0,    "monthly": 0},
+    ],
+    "total_units": 68,
+    "monthly_contract_potential": 61992,
+    "annual_contract_potential": 743904,
+    "commercial_spaces": 5,
+    "commercial_monthly": 5628,
+    "utilities_in_rent": ["Heating(E)","Hot Water(E)","Lights(E)","Cooling(E)","Cooking(E)","Water/Sewer"],
+    "reserve_deposit_new": 1207,  # new monthly deposit from May 1, 2025
+}
+
 PROPANE = pd.DataFrame({
-    "Invoice Date":["Jan-25","Jan-02-26","Jan-21-26","Feb-12-26","Mar-16-26"],
-    "Invoice #":   ["N/A","34085586","34375960","34657363","35210286"],
-    "Gallons":     [172,210.60,199.00,None,145.70],
-    "Rate $/Gal":  [2.099,2.249,2.249,None,2.249],
-    "Total Due":   [394,514.40,486.42,654.54,357.86],
-    "GL Status":   ["✅ Paid","✅ Paid Jan-08 chk#1923","✅ Paid Feb-02 chk#1941","✅ Paid Feb-20 chk#1965","In Mar-26"],
+    "Invoice Date":["Jan-25",      "Jan-02-26",           "Jan-21-26",           "Feb-12-26",           "Mar-16-26"],
+    "Invoice #":   ["N/A",         "34085586",            "34375960",            "34657363",            "35210286"],
+    "Gallons":     [172,           210.60,                199.00,                None,                  145.70],
+    "Rate $/Gal":  [2.099,         2.249,                 2.249,                 None,                  2.249],
+    "Total Due":   [394,           514.40,                486.42,                654.54,                357.86],
+    "GL Status":   ["✅ Paid",     "✅ Paid Jan-08 #1923","✅ Paid Feb-02 #1941","✅ Paid Feb-20 #1965","In Mar-26"],
+})
+
+# RESERVE — actual from audit report
+# Dec 2024: $554,656 | Dec 2025: $559,630
+# Monthly deposit: $1,695 (Jan-Apr 2025) then $1,207 (May-Dec 2025 per HUD letter)
+RESERVE_ACTUAL = pd.DataFrame({
+    "Period":  ["Dec-2023","Dec-2024","Dec-2025"],
+    "Balance": [617780,    554656,    559630],
+    "Deposits":[20340,     20340,     None],
+    "Withdrawals":[114550, 114550,    36198],
+    "Interest":[31086,     31086,     20832],
 })
 
 RESERVE = pd.DataFrame({
@@ -227,12 +313,32 @@ with tab1:
 
     with col_r:
         fig_c=go.Figure()
-        fig_c.add_bar(x=cats,y=actuals,name="Actual",marker_color=colors)
-        fig_c.add_bar(x=cats,y=budgets,name="Budget",
-                      marker_color="rgba(0,0,0,0)",marker_line=dict(color="#94a3b8",width=2))
-        fig_c.update_layout(barmode="overlay",height=270,margin=dict(t=15,b=10),
-                            title="Actual vs Budget by Category (Feb-26)",yaxis_title="$",
-                            legend=dict(orientation="h",y=-0.28))
+        # Actual bars — colored per category
+        fig_c.add_bar(x=cats, y=actuals, name="Actual",
+                      marker_color=colors,
+                      marker_line=dict(color="white", width=1))
+        # Budget bars — always dark slate, clearly visible
+        fig_c.add_bar(x=cats, y=budgets, name="Budget",
+                      marker_color="#334155",
+                      marker_line=dict(color="white", width=1),
+                      opacity=0.75)
+        # Variance annotations on top
+        for i,(cat,a,b) in enumerate(zip(cats,actuals,budgets)):
+            var=a-b
+            fig_c.add_annotation(
+                x=cat, y=max(a,b)+50,
+                text=f"<b>${var:+,.0f}</b>",
+                showarrow=False,
+                font=dict(size=10, color="#dc2626" if var>0 else "#16a34a"),
+                yanchor="bottom"
+            )
+        fig_c.update_layout(
+            barmode="group", height=290, margin=dict(t=35,b=10),
+            title="Actual vs Budget by Category (Feb-26)",
+            yaxis_title="$",
+            legend=dict(orientation="h", y=-0.25),
+            bargap=0.2, bargroupgap=0.05,
+        )
         st.plotly_chart(fig_c,use_container_width=True)
 
     bdown_data={"Category":cats,"Actual $":[f"${a:,.2f}" for a in actuals],
@@ -683,18 +789,74 @@ with tab5:
             doc_ctx="\n\nUPLOADED DOCS:\n"
             for fn,ct in st.session_state.documents.items(): doc_ctx+=f"\n---{fn}---\n{ct[:2000]}\n"
 
-        SYS=f"""Senior real estate financial analyst — HUD affordable housing specialist.
-PROPERTY: Virginia Dare Apartments | 68 units | Elizabeth City NC | HUD HAP | Beacon Mgmt (Kenya Owens)
-T12 Revenue: $786,025 | T12 Util: ${T12["Total_Util"].sum():,.0f} | Avg NOI: ${T12["NOI"].mean():,.0f}
-JAN-26: Revenue $67,200 | NOI $33,607 | Util $10,221 (47.2% over budget)
-FEB-26: Revenue $70,154 | NOI $41,023 | Util $8,004 (15.3% over budget)
-BILLS: DD3 = $2,707 in BOTH Feb-25 AND Jan-26 (winter pattern). Water = always 99 units (estimated).
-Blossman Jan-26: 2 deliveries 409.6 gal/$1,001 (unusual). Price up 7.1% YoY.
-GL JAN-26: All bills clean, zero discrepancies.
-GL FEB-26: Deleted batch #1419 ($8,978.45), elec accrual overstated $1,885, trash understated $256, office past due $405.
-RESERVES: Yr1 $734K | Yr4-6 draw $707K | Yr8 $174K | HVAC 4yr/$154K | Boiler 5yr/$80K
-Savings potential: $26,800/yr = $447K property value at 6% cap.{doc_ctx}
-Answer with specific numbers. Flag risks. Suggest actions. Be concise."""
+        SYS=f"""You are a senior real estate financial analyst specializing in HUD affordable housing.
+You have full access to all Virginia Dare Apartments documents including audit, rent schedule, and utility bills.
+
+PROPERTY: Virginia Dare Apartments | 110 McMorrine St, Elizabeth City NC 27909
+68 units | 9-story | Built 1927 | HUD HAP Contract NC19H148016
+Owner: Virginia Dare NC Preservation LLC | Management: Beacon Management Corp (Kenya Owens)
+
+AUDIT REPORT (EisnerAmper LLP — CLEAN UNMODIFIED OPINION):
+Period: Year ended December 31, 2025 | Auditor: Kelli Winter CPA | Report date: March 26, 2026
+INCOME STATEMENT 2025 vs 2024:
+- Gross Rent: $384,234 (2025) vs $356,994 (2024) — +7.6% due to OCAF increase
+- HAP Subsidy: $446,019 (2025) vs $425,943 (2024)
+- Total Revenue: $786,666 (2025) vs $782,747 (2024)
+- Vacancies: -$76,854 (2025) vs -$52,393 (2024) — vacancy INCREASED
+- Utilities 2025: Electricity $57,977 | Water $9,900 | Gas $8,970 | Sewer $9,412 | TOTAL $86,259
+- Utilities 2024: Electricity $49,132 | Water $9,592 | Gas $8,066 | Sewer $8,638 | TOTAL $75,428
+- Utility YoY increase: +$10,831 (+14.4%) — electricity up $8,845 alone
+- Insurance: $134,382 | O&M: $191,134 | Mortgage Interest: $188,757 | Depreciation: $117,299
+- Net Loss 2025: -$48,411 | Net Loss 2024: -$25,317
+
+BALANCE SHEET Dec 31, 2025:
+- Cash operations: $96,403 | Reserve for Replacements: $559,630 | Escrow: $57,506
+- Total Assets: $3,297,501 | Mortgage net: $3,193,075 | Members Equity: $45,182
+
+RESERVE FOR REPLACEMENTS (Audit confirmed):
+- Dec 2023: $617,780 | Dec 2024: $554,656 | Dec 2025: $559,630
+- 2024: -$114,550 withdrawn | 2025: -$36,198 withdrawn (much less)
+- Monthly deposit: $1,695/mo old → $1,207/mo from May 1, 2025 (HUD OCAF adjustment)
+- Lender (Berkadia) + HUD consent required for withdrawals
+
+MORTGAGE: Berkadia Commercial Mortgage | $3,278,000 at 5.36% | Originated Nov 9, 2023
+Interest-only until Jan 1, 2029 | Then $17,304/mo P+I | Matures Dec 1, 2033
+
+RENT SCHEDULE (HUD Form 92458 — Effective May 1, 2025):
+- 7 Efficiency units @ $832/mo = $5,824
+- 59 One-Bedroom units @ $952/mo = $56,168
+- 2 Two-Bedroom Unsubsidized @ $0 contract rent
+- TOTAL: 68 units | $61,992/mo contract potential | $743,904/yr
+- 5 Commercial spaces = $5,628/mo additional
+- ALL utilities included in rent (tenant pays nothing separately)
+- HAP contract through April 30, 2026
+
+MONTHLY FINANCIALS (from GL reports):
+JAN-26: Revenue $67,200 | NOI $33,607 | Net Income $15,104 | Utilities $10,221 (47% over budget)
+FEB-26: Revenue $70,154 | NOI $41,023 | Net Income $19,424 | Utilities $8,004 (15% over budget)
+
+COMPLETE UTILITY BILLS — DD3 HISTORY (all from actual bills):
+Dec-24: $5,474 (DD3=$1,061) | Jan-25: $8,152 (DD3=$2,092) | Feb-25: $8,889 (DD3=$2,707 ⚠️)
+Mar-25: $8,895 (DD3=$2,707) | Apr-25: $5,095 (DD3=$846) | May-25: $4,759 (DD3=$646)
+Jun-25: $5,191 (DD3=$846) | Jul-25: $6,416 (DD3=$1,292) | Aug-25: $5,852 (DD3=$1,108)
+Sep-25: $5,551 (DD3=$984) | Oct-25: $4,951 (DD3=$815) | Nov-25: $5,384 (DD3=$1,077)
+Dec-25: $7,230 (DD3=$1,954) | Jan-26: $8,551 (DD3=$2,707 ⚠️ SAME SPIKE) | Mar-26: $7,967 (DD3=$1,784)
+DD3 PATTERN: Winter (Dec-Feb) = $1,900-$2,707. Summer (May-Jun) = $646-$846. CLEAR SEASONAL PATTERN.
+Water: ALWAYS 99 units estimated billing. City upgrading to smart meters Apr-Oct 2025.
+Blossman: Jan-26 two deliveries 409.6 gal/$1,001 unusual. Price $2.099→$2.249 (+7.1% YoY).
+Office Apr-26: Past due $405.54 + $19.32 penalty. Disconnect date was Apr-23-26.
+
+GL RECONCILIATION:
+Jan-26: ALL 5 bills clean. Zero discrepancies. ✅
+Feb-26: Deleted batch #1419 ($8,978.45), elec accrual overstated $1,885, trash understated $256.
+
+SAVINGS POTENTIAL ($26,800/yr → $447,000 added value at 6% cap rate):
+- HVAC PM contract (77 units): $6,200/yr savings
+- LED retrofit common areas + exterior: $8,400/yr savings
+- Demand controller (cut DD3 winter spikes): ~$8,200/yr
+- Refuse split with 5 commercial tenants: ~$2,000/yr
+{doc_ctx}
+Answer with specific numbers from the documents above. Flag risks. Suggest concrete actions. Be concise."""
 
         if prompt:=st.chat_input("Ask about utilities, GL, NOI, reserves..."):
             st.session_state.messages.append({"role":"user","content":prompt})
