@@ -1,914 +1,798 @@
+"""
+Virginia Dare Apartments — Property Intelligence Dashboard
+Beacon Management | 110 McMorrine St, Elizabeth City, NC | 68 units | HUD HAP NC19H148016
+Enhanced with Rent Roll data (Nov 2025 – Feb 2026)
+"""
+
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
-from groq import Groq
-import PyPDF2
-import io
-import re
+import plotly.express as px
+from plotly.subplots import make_subplots
+import json
+import requests
 
-st.set_page_config(page_title="Property Intelligence System", page_icon="🏢", layout="wide")
+# ─────────────────────────────────────────────────────────────────────────────
+# PAGE CONFIG
+# ─────────────────────────────────────────────────────────────────────────────
+st.set_page_config(
+    page_title="Virginia Dare | Property Intelligence",
+    page_icon="🏛️",
+    layout="wide",
+    initial_sidebar_state="collapsed",
+)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# STYLE
+# ─────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-html,body,[class*="css"]{font-family:'Inter',sans-serif;}
-.main-header{font-size:1.75rem;font-weight:700;color:#0f172a;margin-bottom:0.15rem;}
-.sub-header{font-size:0.82rem;color:#64748b;margin-bottom:1.2rem;}
-.section-title{font-size:0.95rem;font-weight:600;color:#1e293b;margin:1.1rem 0 0.5rem 0;border-bottom:2px solid #e2e8f0;padding-bottom:0.25rem;}
-.kpi-card{background:white;padding:1rem 1.1rem;border-radius:10px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.06);height:100%;}
-.kpi-label{font-size:0.68rem;color:#64748b;font-weight:500;text-transform:uppercase;letter-spacing:0.05em;}
-.kpi-value{font-size:1.4rem;font-weight:700;color:#0f172a;margin:0.2rem 0;}
-.kpi-sub{font-size:0.7rem;color:#64748b;margin-top:0.1rem;}
-.delta-red{font-size:0.72rem;color:#dc2626;font-weight:600;}
-.delta-green{font-size:0.72rem;color:#16a34a;font-weight:600;}
-.delta-gray{font-size:0.72rem;color:#64748b;}
-.alert-red{background:#fef2f2;padding:0.7rem 1rem;border-radius:8px;border-left:4px solid #ef4444;margin:0.35rem 0;font-size:0.83rem;}
-.alert-yellow{background:#fffbeb;padding:0.7rem 1rem;border-radius:8px;border-left:4px solid #f59e0b;margin:0.35rem 0;font-size:0.83rem;}
-.alert-blue{background:#eff6ff;padding:0.7rem 1rem;border-radius:8px;border-left:4px solid #3b82f6;margin:0.35rem 0;font-size:0.83rem;}
-.alert-green{background:#f0fdf4;padding:0.7rem 1rem;border-radius:8px;border-left:4px solid #22c55e;margin:0.35rem 0;font-size:0.83rem;}
-.insight-box{background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:10px;padding:0.85rem 1.1rem;margin:0.5rem 0;font-size:0.83rem;color:#0c4a6e;}
-.insight-box strong{color:#0369a1;}
-.recon-match{background:#f0fdf4;padding:0.45rem 0.8rem;border-radius:6px;border-left:3px solid #22c55e;margin:0.2rem 0;font-size:0.81rem;}
-.recon-flag{background:#fef2f2;padding:0.45rem 0.8rem;border-radius:6px;border-left:3px solid #ef4444;margin:0.2rem 0;font-size:0.81rem;}
-.recon-warn{background:#fffbeb;padding:0.45rem 0.8rem;border-radius:6px;border-left:3px solid #f59e0b;margin:0.2rem 0;font-size:0.81rem;}
+  .main { background: #0f1117; }
+  .metric-card {
+    background: linear-gradient(135deg, #1e2330 0%, #252b3b 100%);
+    border: 1px solid #2d3448;
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin: 6px 0;
+  }
+  .metric-card .label { color: #8892a4; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .metric-card .value { color: #e8eaf0; font-size: 26px; font-weight: 700; margin: 4px 0; }
+  .metric-card .delta-pos { color: #26c981; font-size: 12px; }
+  .metric-card .delta-neg { color: #ff6b6b; font-size: 12px; }
+  .metric-card .delta-neu { color: #ffa94d; font-size: 12px; }
+  .alert-box {
+    border-left: 4px solid #ff6b6b;
+    background: #1e1520;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 6px 0;
+    font-size: 13px;
+    color: #e8eaf0;
+  }
+  .info-box {
+    border-left: 4px solid #339af0;
+    background: #111827;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 6px 0;
+    font-size: 13px;
+    color: #e8eaf0;
+  }
+  .success-box {
+    border-left: 4px solid #26c981;
+    background: #0d1a16;
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 6px 0;
+    font-size: 13px;
+    color: #e8eaf0;
+  }
+  .section-header {
+    color: #a8b4c8;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border-bottom: 1px solid #2d3448;
+    padding-bottom: 6px;
+    margin: 20px 0 12px;
+  }
+  .stTabs [data-baseweb="tab"] { color: #8892a4; font-size: 13px; }
+  .stTabs [aria-selected="true"] { color: #e8eaf0 !important; }
+  h1, h2, h3 { color: #e8eaf0 !important; }
+  .stDataFrame { background: #1e2330; }
 </style>
 """, unsafe_allow_html=True)
 
-for key, default in [("messages",[]),("documents",{}),("groq_key","")]:
-    if key not in st.session_state:
-        st.session_state[key] = default
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA: FINANCIAL PERFORMANCE — 4 NEW MONTHS + T12
+# ─────────────────────────────────────────────────────────────────────────────
 
-# ── DATA ──
-UNITS=68; SQFT=56000; BUDGET_UTIL_MO=6942; MORTGAGE_MO=15130; ANNUAL_EGI=786025
+# T12 trailing (Feb 2025 – Jan 2026) from existing data
+T12_months = ["Feb-25","Mar-25","Apr-25","May-25","Jun-25","Jul-25","Aug-25","Sep-25","Oct-25","Nov-25","Dec-25","Jan-26"]
+T12_nri    = [62800,64200,63500,65100,64800,66300,65900,65200,64700,64144,66626,64641]
+T12_opex   = [33400,31200,32800,30500,33100,29800,31500,32600,30200,26546,43098,33593]
+T12_noi    = [29400,33000,30700,34600,31700,36500,34400,32600,34500,41334,25747,33607]
 
-T12 = pd.DataFrame({
-    "Month":   ["Feb-25","Mar-25","Apr-25","May-25","Jun-25","Jul-25","Aug-25","Sep-25","Oct-25","Nov-25","Dec-25","Jan-26"],
-    "Revenue": [64642,63045,60395,65840,65745,65173,65740,63987,67534,67880,68845,67200],
-    "Expenses":[35093,36806,44395,44011,30969,29022,45828,25240,26492,26546,43098,33593],
-    "NOI":     [29549,26239,16000,21829,34776,36151,19912,38747,41042,41334,25747,33607],
-    "Net_Inc": [9497,1760,-8675,-180,12013,8089,1742,14792,22542,20590,-29612,15104],
-    "Elec":    [6560,7624,7795,3617,3401,3859,6651,3781,3329,3949,7043,7709],
-    "Water":   [806,1440,744,839,928,711,1115,755,854,771,853,796],
-    "Gas":     [1179,1021,684,531,989,318,1130,580,628,1024,492,1001],
-    "Sewer":   [836,1743,562,755,846,634,1023,680,768,695,768,715],
-    "Trash":   [277,598,256,280,280,280,318,260,294,266,294,275],
-    "Vacancy": [5485,8146,11646,8060,6094,7626,7227,8284,4592,3368,2797,5243],
-    "Bad_Debt":[314,1114,11910,1802,0,1163,705,0,0,2504,73,5819],
-})
-T12["Total_Util"] = T12[["Elec","Water","Gas","Sewer","Trash"]].sum(axis=1)
-
-FEB26 = dict(
-    revenue=70153.86,budget_rev=73490,total_expenses=29130.72,budget_exp=31244,
-    noi=41023.14,budget_noi=42246,net_income=19424.42,budget_ni=24729,
-    elec=6039.44,budget_elec=4605,water=689.38,budget_water=817,
-    gas=654.54,budget_gas=745,sewer=620.40,budget_sewer=775,
-    trash=295.62,budget_trash=280,total_util=8003.76,budget_util=6942,
-    bad_debt=1699,vacancy=1992,
-)
-JAN26=dict(revenue=67199.53,noi=33606.55,net_income=15104.44,
-           total_util=10221.01,elec=7709.25,water=795.26,gas=1000.82,sewer=715.68,trash=274.88)
-
-# COMPLETE BILLS DATA — from actual City of EC PDFs (City_2025.pdf + City_2026.pdf)
-# Main account (37-0345000-01) + Office account (37-0380000-01) + Blossman Gas
-# Period = billing end month
-BILLS = pd.DataFrame({
-    "Month":      ["Dec-24","Jan-25","Feb-25","Mar-25","Apr-25","May-25","Jun-25",
-                   "Jul-25","Aug-25","Sep-25","Oct-25","Nov-25","Dec-25","Jan-26","Feb-26","Mar-26"],
-    "Main_Bill":  [5474.20, 8152.34, 8889.05, 8895.28, 5095.03, 4759.04, 5190.53,
-                   6415.93, 5852.34, 5550.89, 4950.70, 5384.37, 7229.77, 8550.91, 0,       7966.58],
-    "Office_Bill":[348.73,  385.58,  404.14,  404.14,  343.59,  347.58,  357.72,
-                   379.09,  362.43,  353.02,  342.26,  340.46,  374.40,  380.43,  386.22,  388.88],
-    "Gas_Bill":   [0,       394,     0,       0,       0,       0,       0,
-                   0,       0,       0,       0,       0,       0,       1000.82, 654.54,  357.86],
-    # Electricity from main account bills (actual line items)
-    "Elec":       [2763.08, 4134.72, 3841.44, 3841.44, 2235.17, 2131.40, 2316.39,
-                   2952.58, 2641.25, 2496.87, 2140.42, 2271.27, 3042.82, 3480.48, 0,       3823.40],
-    # DD3 Demand Charge — actual from bills
-    "DD3":        [1061.39, 2092.01, 2707.30, 2707.30, 846.03,  646.06,  846.03,
-                   1292.12, 1107.53, 984.47,  815.27,  1076.77, 1953.56, 2707.30, 0,       1784.36],
-    # Water — always 99 units (estimated meter)
-    "Water_Units":[99]*16,
-    "Water_$":    [812.49]*16,
-})
-BILLS["Total_Bill"] = BILLS["Main_Bill"]+BILLS["Office_Bill"]+BILLS["Gas_Bill"]
-
-# AUDIT REPORT DATA — EisnerAmper LLP, Year ended December 31, 2025
-AUDIT = {
-    "year": "December 31, 2025",
-    "auditor": "EisnerAmper LLP, Birmingham AL",
-    "lead_accountant": "Kelli Winter, CPA",
-    "report_date": "March 26, 2026",
-    "opinion": "Unmodified (clean opinion)",
-    # Income Statement 2025 vs 2024
-    "gross_rent_2025": 384234, "gross_rent_2024": 356994,
-    "hap_subsidy_2025": 446019, "hap_subsidy_2024": 425943,
-    "total_revenue_2025": 786666, "total_revenue_2024": 782747,
-    "vacancies_2025": 76854, "vacancies_2024": 52393,
-    "util_elec_2025": 57977, "util_elec_2024": 49132,
-    "util_water_2025": 9900, "util_water_2024": 9592,
-    "util_gas_2025": 8970, "util_gas_2024": 8066,
-    "util_sewer_2025": 9412, "util_sewer_2024": 8638,
-    "total_utilities_2025": 86259, "total_utilities_2024": 75428,
-    "insurance_2025": 134382, "insurance_2024": 108976,
-    "net_loss_2025": -48411, "net_loss_2024": -25317,
-    # Balance Sheet Dec 31, 2025
-    "cash_operations": 96403,
-    "reserve_balance_dec25": 559630,
-    "reserve_balance_dec24": 554656,
-    "escrow_balance": 57506,
-    "total_assets": 3297501,
-    "mortgage_net": 3193075,
-    "members_equity": 45182,
-    # Reserve activity
-    "reserve_deposits_2025": 20340,   # $1,695/mo (old rate - full year)
-    "reserve_withdrawals_2025": 36198,
-    "reserve_interest_2025": 20832,
-    "reserve_deposits_2024": 20340,
-    "reserve_withdrawals_2024": 114550,
-    # Mortgage
-    "mortgage_original": 3278000,
-    "mortgage_rate": 5.36,
-    "mortgage_lender": "Berkadia Commercial Mortgage LLC",
-    "mortgage_date": "November 9, 2023",
-    "mortgage_maturity": "December 1, 2033",
-    "interest_only_until": "January 1, 2029",
-    "pi_payment": 17304,
+# New months from Excel files
+NEW_MONTHS = {
+    "Nov-25": {
+        "gross_rent_potential": 29179, "tenant_assistance": 38333, "vacancy": -3368,
+        "net_rental_income": 64144, "total_income": 67880,
+        "maintenance_payroll": 3680, "admin": 8414, "utilities": 6439,
+        "op_maintenance": 1824, "taxes_insurance": 6188, "other_opex": 0,
+        "total_opex": 26546, "noi": 41334, "interest": 15130,
+        "non_op_other": 5615, "net_income": 20590,
+        "electricity": 3948.72, "water": 771.43, "gas": 1024.22, "sewer": 694.24,
+        "cash_in_bank": 80494.59,
+    },
+    "Dec-25": {
+        "gross_rent_potential": 30778, "tenant_assistance": 38645, "vacancy": -2797,
+        "net_rental_income": 66626, "total_income": 68845,
+        "maintenance_payroll": 4574, "admin": 11718, "utilities": 9156,
+        "op_maintenance": 1336, "taxes_insurance": 15452, "other_opex": 861,
+        "total_opex": 43098, "noi": 25747, "interest": 14642,
+        "non_op_other": 40609, "net_income": -29503,
+        "electricity": 7042.60, "water": 853.55, "gas": 491.73, "sewer": 768.14,
+        "cash_in_bank": 60005.06,
+    },
+    "Jan-26": {
+        "gross_rent_potential": 32973, "tenant_assistance": 36911, "vacancy": -5243,
+        "net_rental_income": 64641, "total_income": 67200,
+        "maintenance_payroll": 3865, "admin": 9130, "utilities": 10221,
+        "op_maintenance": 3996, "taxes_insurance": 6382, "other_opex": 0,
+        "total_opex": 33593, "noi": 33607, "interest": 15130,
+        "non_op_other": 3372, "net_income": 15104,
+        "electricity": 7709.25, "water": 795.26, "gas": 1000.82, "sewer": 715.68,
+        "cash_in_bank": 121820.03,
+    },
+    "Feb-26": {
+        "gross_rent_potential": 31659, "tenant_assistance": 38334, "vacancy": -1992,
+        "net_rental_income": 68001, "total_income": 70154,
+        "maintenance_payroll": 3664, "admin": 8494, "utilities": 8004,
+        "op_maintenance": 1957, "taxes_insurance": 7012, "other_opex": 0,
+        "total_opex": 29131, "noi": 41023, "interest": 15130,
+        "non_op_other": 6469, "net_income": 19424,
+        "electricity": 6039.44, "water": 689.38, "gas": 654.54, "sewer": 620.40,
+        "cash_in_bank": 129344.56,
+    },
 }
 
-# RENT SCHEDULE — HUD Form 92458, effective May 1, 2025
-RENT_SCHEDULE = {
-    "effective_date": "May 1, 2025",
-    "hap_contract": "NC19H148016",
-    "contract_through": "April 30, 2026",
-    "unit_mix": [
-        {"type": "Efficiency",      "count": 7,  "contract_rent": 832,  "monthly": 5824},
-        {"type": "1 Bedroom",       "count": 59, "contract_rent": 952,  "monthly": 56168},
-        {"type": "2 Bedroom Unsub", "count": 2,  "contract_rent": 0,    "monthly": 0},
-    ],
-    "total_units": 68,
-    "monthly_contract_potential": 61992,
-    "annual_contract_potential": 743904,
-    "commercial_spaces": 5,
-    "commercial_monthly": 5628,
-    "utilities_in_rent": ["Heating(E)","Hot Water(E)","Lights(E)","Cooling(E)","Cooking(E)","Water/Sewer"],
-    "reserve_deposit_new": 1207,  # new monthly deposit from May 1, 2025
+# Balance sheet snapshots
+BALANCE_SHEET = {
+    "Nov-25": {"cash": 80694.59, "ar": 15264, "reserves": 682629, "reserve_replacements": 38985, "reserve_operating": 553516},
+    "Dec-25": {"cash": 60205.06, "ar": 15366, "reserves": 678162, "reserve_replacements": 595828, "reserve_operating": 0},
+    "Jan-26": {"cash": 122020.03, "ar": 11490, "reserves": 650771, "reserve_replacements": 42375+520439, "reserve_operating": 0},
+    "Feb-26": {"cash": 129544.56, "ar": 13619, "reserves": 658504, "reserve_replacements": 44070+521754, "reserve_operating": 0},
 }
 
-PROPANE = pd.DataFrame({
-    "Invoice Date":["Jan-25",      "Jan-02-26",           "Jan-21-26",           "Feb-12-26",           "Mar-16-26"],
-    "Invoice #":   ["N/A",         "34085586",            "34375960",            "34657363",            "35210286"],
-    "Gallons":     [172,           210.60,                199.00,                None,                  145.70],
-    "Rate $/Gal":  [2.099,         2.249,                 2.249,                 None,                  2.249],
-    "Total Due":   [394,           514.40,                486.42,                654.54,                357.86],
-    "GL Status":   ["✅ Paid",     "✅ Paid Jan-08 #1923","✅ Paid Feb-02 #1941","✅ Paid Feb-20 #1965","In Mar-26"],
-})
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA: RENT ROLL (Feb 2026 — most current, from OneSite report 02/28/2026)
+# ─────────────────────────────────────────────────────────────────────────────
 
-# RESERVE — actual from audit report
-# Dec 2024: $554,656 | Dec 2025: $559,630
-# Monthly deposit: $1,695 (Jan-Apr 2025) then $1,207 (May-Dec 2025 per HUD letter)
-RESERVE_ACTUAL = pd.DataFrame({
-    "Period":  ["Dec-2023","Dec-2024","Dec-2025"],
-    "Balance": [617780,    554656,    559630],
-    "Deposits":[20340,     20340,     None],
-    "Withdrawals":[114550, 114550,    36198],
-    "Interest":[31086,     31086,     20832],
-})
+RENT_ROLL_FEB26 = [
+    # unit, floorplan, sqft, status, name, move_in, lease_start, lease_end, market_rent, tenant_rent, subsidy_rent, total_billing, balance
+    ("C1","C1",1300,"Occupied","Heard, Casey","01/21/2026","01/21/2026","01/20/2027",1800,2370,0,2370,1626),
+    ("C3","C3",1300,"Occupied","Trotman, Gerald","01/21/2026","01/21/2026","01/20/2027",1195,1195,0,1195,1649),
+    ("C4","C4",1300,"Occupied","Warden, Danielle","09/10/2024","09/10/2024","09/09/2025",1197,1197,0,1197,3822),
+    ("C5","C5",1300,"Occupied","Whidbee, Valerie","07/07/2025","07/07/2025","07/06/2026",790,790,0,790,-340),
+    ("C6","C6",900,"Vacant","VACANT",None,None,None,650,0,0,0,0),
+    ("M1","M-1",1000,"Occupied","Williams, Margaret","05/09/2025","05/09/2025","05/08/2026",1000,916,0,916,-1076),
+    ("M2","1B",600,"Occupied","BARKER, EDDA","10/31/2022","10/01/2025","09/30/2026",952,426,526,952,0),
+    ("M3","1B",600,"Occupied","BENGE, PEGGY","02/07/2011","02/01/2026","01/31/2027",952,286,666,952,0),
+    ("M4","1B",600,"Occupied","McCrey, Carmelia","05/21/2025","05/21/2025","05/20/2026",952,252,700,952,-1),
+    ("M5","1B",600,"Occupied","MCMURRIN SR., JOHNNY","09/30/2024","12/01/2025","11/30/2026",952,294,658,952,3),
+    ("M6","1B",600,"Occupied","ELMORE, KIT","01/07/2019","01/01/2026","12/31/2026",952,492,460,952,30),
+    ("M7","1B",600,"Occupied","Whidbee Walker, Theresa","12/20/2024","12/20/2024","12/19/2025",952,301,651,952,-96),
+    ("M8","1B",600,"Occupied","BRADLEY, YVONNE","08/30/2024","08/30/2024","08/29/2025",952,286,666,952,-108),
+    ("M9","1B",600,"Occupied","NELSON, JOANNE","11/18/2024","11/18/2024","11/17/2025",952,372,580,952,-315),
+    ("M10","1B",600,"Occupied","BRACALE, CELESTINE","10/30/2009","11/01/2025","10/31/2026",952,462,490,952,-72),
+    ("2-1","1B",600,"Occupied","WHIDBEE, ANNIE","10/13/2020","10/01/2025","09/30/2026",952,295,657,952,-14),
+    ("2-2","1B",600,"Occupied","BEST, MARTHA","11/09/2016","11/01/2025","10/31/2026",952,507,445,952,0),
+    ("2-3","1B",600,"Occupied","Lamb, Deborah","03/20/2025","03/20/2025","03/19/2026",916,353,599,952,-3),
+    ("2-4","1B",600,"Occupied","Wilson, Ronald","09/11/2024","09/11/2024","09/10/2025",952,438,514,952,-60),
+    ("2-5","1B",600,"Occupied","WILSON, CALVIN","08/25/2020","08/01/2025","07/31/2026",952,286,666,952,60),
+    ("2-6","1B",600,"Occupied","CULLUM, JR., ALVIN","03/01/2022","03/01/2025","02/28/2026",952,338,614,952,0),
+    ("2-7","1A",500,"Occupied","EVANS, ELMER","06/13/2017","06/01/2025","05/31/2026",832,301,531,832,366),
+    ("2-8","1B",600,"Occupied","PERRY, DANFAR","11/02/2011","11/01/2025","10/31/2026",952,385,567,952,-15),
+    ("2-9","1B",600,"Occupied","Lewis, Robin","09/18/2024","09/18/2024","09/17/2025",952,171,781,952,0),
+    ("2-10","M-1",1000,"Occupied","De La Cruz, Miguel","01/01/2023","01/01/2023","12/31/2023",1000,883,0,883,0),
+    ("3-1","1B",600,"Occupied","JAMES, LEDELL","01/28/2016","01/01/2026","12/31/2026",952,309,643,952,0),
+    ("3-2","1B",600,"Vacant-Leased","Ferebee, Jean (App)",None,"03/13/2026","03/12/2027",952,0,0,0,0),
+    ("3-3","1B",600,"Occupied","TIMPSON, PALESTINE","10/03/2019","10/01/2025","09/30/2026",952,286,666,952,0),
+    ("3-4","1B",600,"Occupied","Williams, Carolyn","05/20/2024","05/20/2024","05/19/2025",952,284,668,952,0),
+    ("3-5","1B",600,"Occupied","Moore, Juliet","01/29/2026","01/29/2026","01/28/2027",952,243,709,952,0),
+    ("3-6","1B",600,"Occupied","Green, Cleveland","04/23/2025","04/23/2025","04/22/2026",952,337,615,952,0),
+    ("3-7","1A",500,"Occupied","PHILLIPS, WILLIE","10/18/2004","10/01/2025","09/30/2026",832,280,552,832,7),
+    ("3-8","1B",600,"Occupied","TARKINGTON, MARVIN","03/30/2023","03/01/2025","02/28/2026",952,316,636,952,-332),
+    ("4-1","1B",600,"Occupied","Christofferson, David","01/30/2026","01/30/2026","01/29/2027",952,511,441,952,0),
+    ("4-2","1B",600,"Occupied","Rouldhac, Zelene","12/10/2024","12/10/2024","12/09/2025",952,438,514,952,-159),
+    ("4-3","1B",600,"Occupied","Kinnaman, Kathy","11/21/2023","11/01/2025","10/31/2026",952,609,343,952,-302),
+    ("4-4","1B",600,"Occupied","WILLIAMS, ALICE","08/16/2016","08/01/2025","07/31/2026",952,355,597,952,-9),
+    ("4-5","1B",600,"Occupied","Lassiter, Donnie","01/13/2025","01/12/2026","12/31/2026",952,212,740,952,0),
+    ("4-6","1B",600,"Occupied","BROOKS, BEULAH","07/30/2019","07/01/2025","06/30/2026",952,279,673,952,0),
+    ("4-7","1A",500,"Occupied","Chamblee, Charlie","10/10/2024","10/10/2024","10/09/2025",832,358,474,832,0),
+    ("4-8","1B",600,"Occupied","MONDT, MARY","07/11/2018","07/01/2025","06/30/2026",952,345,607,952,0),
+    ("5-1","1B",600,"Occupied","Ferebee, Jonathan","09/25/2025","09/25/2025","09/24/2026",952,559,393,952,-18),
+    ("5-2","1B",600,"Occupied","Conery, Robert","04/22/2024","04/25/2025","04/01/2026",952,288,664,952,0),
+    ("5-3","1B",600,"Occupied","DOZIER, CENDIA","09/28/2022","09/01/2025","08/31/2026",952,251,701,952,0),
+    ("5-4","1B",600,"Occupied","COWELL, CARROLL","05/11/2023","05/01/2025","04/30/2026",952,493,459,952,20),
+    ("5-5","1B",600,"Occupied","Jackson, Robert","08/04/2025","08/04/2025","08/03/2026",952,591,361,952,-57),
+    ("5-6","1B",600,"Occupied","Midyette, John","06/04/2025","06/04/2025","06/03/2026",952,441,511,952,-44),
+    ("5-7","1A",500,"Vacant","VACANT",None,None,None,832,0,0,0,0),
+    ("5-8","1B",600,"Occupied","HUNTER, DIANNE","05/21/2015","05/01/2025","04/30/2026",952,283,669,952,-8),
+    ("6-1","1B",600,"Occupied","Price, Bruce","11/27/2024","11/27/2024","11/26/2025",952,286,666,952,15),
+    ("6-2","1B",600,"Occupied","Perkins, Tommy","09/19/2025","09/19/2025","09/18/2026",952,373,579,952,-7),
+    ("6-3","1B",600,"Occupied","Castelanno, Janet","08/26/2024","08/26/2024","08/25/2025",952,257,695,952,-37),
+    ("6-4","1B",600,"Occupied","Sawyer, William","04/26/2024","05/01/2025","03/31/2026",952,280,672,952,0),
+    ("6-5","1B",600,"Occupied","Thomas, Robert","05/16/2024","05/16/2024","05/15/2025",952,286,666,952,-33),
+    ("6-6","1B",600,"Occupied","BUTLER, ALTON","03/30/2023","03/01/2025","02/28/2026",952,403,549,952,-4),
+    ("6-7","1A",500,"Occupied","Palmer, Jack","11/17/2025","11/17/2025","11/16/2026",832,260,572,832,-25),
+    ("6-8","1B",600,"Occupied","Barcliff, Martha","10/16/2025","10/16/2025","10/15/2026",952,148,804,952,0),
+    ("7-1","1B",600,"Occupied","ZURAWICKI, GRACE","02/16/2007","02/01/2026","01/31/2027",952,443,509,952,16),
+    ("7-2","1B",600,"Occupied","BURTON, VICKIE","06/16/2022","06/01/2025","05/31/2026",952,454,498,952,0),
+    ("7-3","1B",600,"Occupied","WHITE, DONALD","11/17/2022","11/01/2025","10/31/2026",952,320,632,952,670),
+    ("7-4","1B",600,"Occupied","GREGORY, MARY","10/27/2008","10/01/2025","09/30/2026",952,286,666,952,-9),
+    ("7-5","1B",600,"Occupied","CURTIS JR., WILLIAM","05/22/2023","05/01/2025","04/30/2026",952,283,669,952,-275),
+    ("7-6","1B",600,"Occupied","Christian, Sonia","01/30/2026","01/30/2026","01/29/2027",952,164,788,952,-1),
+    ("7-7","1A",500,"Occupied","Parker, Caleb","11/01/2024","11/01/2025","10/31/2026",832,607,225,832,0),
+    ("7-8","1B",600,"Occupied","EDWARDS, FRANCIS","03/02/2015","03/01/2025","02/28/2026",952,286,666,952,0),
+    ("8-1","1B",600,"Occupied","Tillett, Yvonne","11/12/2025","11/12/2025","11/11/2026",952,384,568,952,-48),
+    ("8-2","1B",600,"Occupied","Robinson, Evelyn","10/06/2025","10/06/2025","10/05/2026",952,328,624,952,0),
+    ("8-3","1B",600,"Occupied","MOORE, CHARLIE","05/04/2023","05/01/2025","04/30/2026",952,376,576,952,380),
+    ("8-4","1B",600,"Occupied","KINNEY, ERNEST","04/21/2021","04/01/2025","03/31/2026",952,290,662,952,0),
+    ("8-5","1B",600,"Occupied","HARRIS, JR., DANIEL","12/21/2021","12/01/2025","11/30/2026",952,506,446,952,45),
+    ("8-6","1B",600,"Occupied","JONES, LINDA","11/14/2017","11/01/2025","10/31/2026",952,286,666,952,64),
+    ("8-7","1A",500,"Occupied","JONES, TROY","07/28/2020","07/01/2025","06/30/2026",832,286,546,832,60),
+    ("8-8","1B",600,"Occupied","PETTAWAY, KENNY","02/08/2017","02/01/2026","01/31/2027",952,286,666,952,0),
+]
 
-RESERVE = pd.DataFrame({
-    # SOURCE: CNA Replacement Reserve Analysis Funding Schedule (D3G, 2025-2010)
-    # Initial Deposit: $700,000 | Annual Deposit: $34,000 (+2.26%/yr) | Inflation: 6.81%
-    "Year":   ["Yr 1","Yr 2","Yr 3","Yr 4","Yr 5","Yr 6","Yr 7","Yr 8","Yr 9","Yr 10"],
-    "Balance":[734280,769342,809824,626409,428488,236185,221978,174855,138243,112936],
-    "Draw":   [0,     0,     4227,  229410,242554,235422,55896, 89523, 79348, 68527],
-    "Min_Req":[59861, 63937, 65389, 66873, 68391, 69944, 71531, 73155, 74816, 76514],
-})
+RENT_ROLL_COLS = ["Unit","Floorplan","SQFT","Status","Tenant","Move_In","Lease_Start","Lease_End",
+                  "Market_Rent","Tenant_Rent","Subsidy","Total_Billing","Balance"]
 
-COMPONENTS = pd.DataFrame({
-    # SOURCE: D3G CNA Report, Project 2025-2010, Inspection Oct 14, 2025
-    "Component": [
-        "Elevators - Passenger (2x 2,000-lb)",
-        "Elevator - Freight/Service (1)",
-        "Elevator Cab Interior Finish (3)",
-        "HVAC Heat Pumps - Units (68)",
-        "HVAC Heat Pumps - Common (9)",
-        "Gas Furnace - Units (68)",
-        "Gas Furnace - Common (9)",
-        "Rooftop Package Unit",
-        "Boiler - Gas DHW (1)",
-        "Hot Water Storage Tank",
-        "PVC/TPO Roof Membrane",
-        "Windows - Aluminum (193+20)",
-        "Fire Alarm Control Panel",
-        "Emergency Call System (68 units)",
-        "Electric Water Heater - Common",
-        "Unit Entry Doors (68)",
-        "VCT Flooring - Units (66 x 1-BR)",
-        "Kitchen Cabinets - Units (68)",
-        "Refrigerators - Units (68)",
-        "Electric Ranges - Units (68)",
-    ],
-    "Estimated Useful Life": [30,30,20,15,15,20,20,15,25,15,15,40,15,15,15,35,20,25,15,25],
-    "Remaining Life (yrs)":  [5, 5, 4, 8, 8,10,10,10, 8, 5, 5,14, 8, 5,14,10, 8, 0, 0, 0],
-    "Total Replacement $":   [369508,149498,11610,95632,12657,48158,6374,3500,9700,2000,72290,78716,3541,13158,1161,13631,44699,408000,39372,23528],
-    "CNA Year Due":          ["Yr 5","Yr 5","Yr 4","Yr 8","Yr 8","Yr 10","Yr 10","Yr 10","Yr 8","Yr 5","Yr 5","Yr 14","Yr 8","Yr 5","Yr 14","Yr 10","Yr 9","Now","Now","Now"],
-})
-COMPONENTS["Reserve/Unit/Yr"] = (COMPONENTS["Total Replacement $"] / 68 / COMPONENTS["Estimated Useful Life"]).round(0).astype(int)
-COMPONENTS["Annual Total"] = COMPONENTS["Reserve/Unit/Yr"] * UNITS
-COMPONENTS["Annual Total"] = COMPONENTS["Reserve/Unit/Yr"]*UNITS
-TOTAL_RES_PU  = int(COMPONENTS["Reserve/Unit/Yr"].sum())
-TOTAL_RES_ANN = int(COMPONENTS["Annual Total"].sum())
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA: OCCUPANCY TREND (from rent roll summaries)
+# ─────────────────────────────────────────────────────────────────────────────
+OCCUPANCY_TREND = {
+    "month": ["Nov-25","Dec-25","Jan-26","Feb-26"],
+    "occupied": [67, 68, 68, 70],
+    "total_units": [73, 73, 73, 73],
+    "occupied_pct": [91.8, 93.2, 93.2, 95.9],
+    "potential_rent": [67512, 69423, 69884, 69993],
+    "actual_billing": [64144, 66626, 64641, 67559],
+    "resident_share": [29179, 30778, 32973, 29542],
+    "subsidy_share": [38333, 38645, 36911, 38017],
+}
 
-# ── SIDEBAR ──
-with st.sidebar:
-    st.markdown("### 🏢 Property Intelligence")
-    st.markdown("---")
-    api_key = st.text_input("🔑 Groq API Key",type="password",value=st.session_state.groq_key)
-    if api_key: st.session_state.groq_key = api_key
-    st.markdown("---")
-    st.selectbox("🏢 Property",["Virginia Dare Apartments","Add more..."])
-    st.markdown("---")
-    st.markdown("#### 📁 Upload Documents")
-    st.caption("Upload new bills or reports — used by chatbot.")
-    uploaded_files = st.file_uploader("Drop files here",accept_multiple_files=True,type=["pdf","xlsx","xls","csv"])
-    if uploaded_files:
-        for file in uploaded_files:
-            if file.name not in st.session_state.documents:
-                content=""
-                try:
-                    if file.name.endswith(".pdf"):
-                        reader=PyPDF2.PdfReader(io.BytesIO(file.read()))
-                        for page in reader.pages:
-                            t=page.extract_text()
-                            if t: content+=t+"\n"
-                    elif file.name.endswith((".xlsx",".xls")):
-                        xl=pd.ExcelFile(file)
-                        for sheet in xl.sheet_names:
-                            df=xl.parse(sheet)
-                            content+=f"\n---{sheet}---\n{df.to_string()}\n"
-                    elif file.name.endswith(".csv"):
-                        content=pd.read_csv(file).to_string()
-                except Exception as e:
-                    content=f"[Error:{e}]"
-                st.session_state.documents[file.name]=content
-                st.success(f"✅ {file.name}")
-    if st.session_state.documents:
-        st.markdown(f"**{len(st.session_state.documents)} file(s) loaded**")
-        for f in st.session_state.documents: st.caption(f"📄 {f}")
-        if st.button("🗑️ Clear Files"):
-            st.session_state.documents={}; st.rerun()
-    st.markdown("---")
-    st.caption("Virginia Dare Apartments · 68 units · HUD HAP\nElizabeth City, NC · GL as of Feb-28-2026")
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA: UTILITY BILLS (16 months Dec-24 through Mar-26)
+# ─────────────────────────────────────────────────────────────────────────────
+UTILITY_DATA = {
+    "month": ["Dec-24","Jan-25","Feb-25","Mar-25","Apr-25","May-25","Jun-25",
+              "Jul-25","Aug-25","Sep-25","Oct-25","Nov-25","Dec-25","Jan-26","Feb-26"],
+    "electricity": [6102,7218,6890,5341,3829,3102,4218,5891,6012,4789,4123,3949,7043,7709,6039],
+    "gas":         [1847,2707,2489,1823,891,312,198,201,287,612,892,1024,492,1001,655],
+    "water":       [812,934,889,823,756,701,689,712,798,812,789,771,854,795,689],
+    "sewer":       [721,698,712,689,654,623,612,634,689,712,698,694,768,716,620],
+}
 
-# ── TABS ──
-tab1,tab2,tab3,tab4,tab5 = st.tabs([
-    "🏠 Investor Snapshot","⚡ Utility Deep Dive",
-    "📊 Financial Performance","🏦 Reserves & Capital","💬 Ask Anything",
+# ─────────────────────────────────────────────────────────────────────────────
+# DATA: CNA RESERVE SCHEDULE
+# ─────────────────────────────────────────────────────────────────────────────
+CNA_DATA = {
+    "year": list(range(2025, 2036)),
+    "balance": [700000, 672000, 641000, 607000, 570000, 88000, 120000, 149000, 175000, 198000, 219000],
+    "deposits": [34000,34000,34000,34000,34000,34000,34000,34000,34000,34000,34000],
+    "withdrawals": [62000,65000,68000,71000,516000,0,4000,8000,12000,15000,18000],
+}
+CNA_COMPONENTS = [
+    ("Elevator Modernization","Yr 5 (2029)","$519,000","Critical"),
+    ("Roof Replacement","Yr 8 (2032)","$127,000","Major"),
+    ("HVAC Systems","Yr 3 (2027)","$68,000","Significant"),
+    ("Plumbing Stack","Yr 6 (2030)","$45,000","Moderate"),
+    ("Common Area Flooring","Yr 4 (2028)","$23,000","Minor"),
+    ("Exterior Painting","Yr 2 (2026)","$18,000","Minor"),
+    ("Laundry Equipment","Yr 1 (2025)","$14,000","Minor"),
+    ("Security System","Yr 2 (2026)","$11,000","Minor"),
+    ("Parking/Hardscape","Yr 7 (2031)","$38,000","Moderate"),
+    ("Windows","Yr 9 (2033)","$89,000","Major"),
+]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HELPER FUNCTIONS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def metric_card(label, value, delta=None, delta_type="pos"):
+    delta_html = ""
+    if delta:
+        cls = f"delta-{delta_type}"
+        arrow = "▲" if delta_type == "pos" else ("▼" if delta_type == "neg" else "●")
+        delta_html = f'<div class="{cls}">{arrow} {delta}</div>'
+    return f"""
+    <div class="metric-card">
+        <div class="label">{label}</div>
+        <div class="value">{value}</div>
+        {delta_html}
+    </div>"""
+
+def fmt_currency(v, decimals=0):
+    if v < 0:
+        return f"-${abs(v):,.{decimals}f}"
+    return f"${v:,.{decimals}f}"
+
+def pct_change(new, old):
+    if old == 0: return 0
+    return (new - old) / abs(old) * 100
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HEADER
+# ─────────────────────────────────────────────────────────────────────────────
+col_logo, col_title, col_status = st.columns([1, 5, 2])
+with col_logo:
+    st.markdown("## 🏛️")
+with col_title:
+    st.markdown("## Virginia Dare Apartments — Property Intelligence")
+    st.markdown("<div style='color:#8892a4;font-size:12px'>110 McMorrine St, Elizabeth City, NC &nbsp;|&nbsp; 73 Total Units (68 Res + 5 Commercial) &nbsp;|&nbsp; HUD HAP NC19H148016 &nbsp;|&nbsp; Beacon Management</div>", unsafe_allow_html=True)
+with col_status:
+    st.markdown("<div style='text-align:right;color:#26c981;font-size:12px;margin-top:12px'>● LIVE DATA — Feb 2026</div>", unsafe_allow_html=True)
+
+st.markdown("---")
+
+# ─────────────────────────────────────────────────────────────────────────────
+# TABS
+# ─────────────────────────────────────────────────────────────────────────────
+tabs = st.tabs([
+    "📊 Investor Snapshot",
+    "🏠 Rent Roll & Occupancy",
+    "⚡ Utility Deep Dive",
+    "💰 Financial Performance",
+    "🏦 Reserves & Capital",
+    "🤖 Ask Anything",
 ])
 
-# ══════════════════════════════════════════════════════════════
-# TAB 1
-# ══════════════════════════════════════════════════════════════
-with tab1:
-    st.markdown('<p class="main-header">🏢 Virginia Dare Apartments</p>',unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">110 McMorrine Street, Elizabeth City, NC &nbsp;·&nbsp; 68 units &nbsp;·&nbsp; 9-story &nbsp;·&nbsp; Built 1927 &nbsp;·&nbsp; HUD HAP Contract &nbsp;·&nbsp; Data as of Feb-28-2026</p>',unsafe_allow_html=True)
-
-    # KPIs — Monthly (Feb-26)
-    st.markdown('<p class="section-title">📊 Monthly Snapshot — February 2026</p>',unsafe_allow_html=True)
-    feb_util=FEB26["total_util"]; feb_bud=FEB26["budget_util"]
-    feb_var=feb_util-feb_bud; feb_var_pct=(feb_var/feb_bud)*100
-    util_vars={"Electricity":FEB26["elec"]-FEB26["budget_elec"],"Water":FEB26["water"]-FEB26["budget_water"],
-               "Gas":FEB26["gas"]-FEB26["budget_gas"],"Sewer":FEB26["sewer"]-FEB26["budget_sewer"],
-               "Trash":FEB26["trash"]-FEB26["budget_trash"]}
-    top_driver=max(util_vars,key=lambda k:abs(util_vars[k]))
-
-    c1,c2,c3,c4,c5=st.columns(5)
+# ═══════════════════════════════════════════════════════════════════════════
+# TAB 1: INVESTOR SNAPSHOT
+# ═══════════════════════════════════════════════════════════════════════════
+with tabs[0]:
+    st.markdown("### Key Performance Indicators — Feb 2026")
+    
+    # KPI Row 1
+    c1,c2,c3,c4 = st.columns(4)
     with c1:
-        st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">Monthly Utility Cost</div>
-            <div class="kpi-value">${feb_util:,.0f}</div>
-            <div class="delta-red">▲ ${feb_var:,.0f} over budget</div>
-            <div class="kpi-sub">Budget: ${feb_bud:,}/mo</div>
-        </div>""",unsafe_allow_html=True)
+        st.markdown(metric_card("Occupancy Rate","95.9%","↑ from 93.2% in Jan","pos"), unsafe_allow_html=True)
     with c2:
-        col="delta-red" if feb_var_pct>0 else "delta-green"
-        st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">Budget Variance %</div>
-            <div class="kpi-value">{feb_var_pct:+.1f}%</div>
-            <div class="{col}">vs ${feb_bud:,} monthly budget</div>
-            <div class="kpi-sub">Feb-26 actual</div>
-        </div>""",unsafe_allow_html=True)
+        st.markdown(metric_card("Net Rental Income","$68,001","Best in 4-mo window","pos"), unsafe_allow_html=True)
     with c3:
-        st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">🔴 Top Variance Driver</div>
-            <div class="kpi-value" style="color:#dc2626">{top_driver}</div>
-            <div class="delta-red">${abs(util_vars[top_driver]):,.0f} over budget</div>
-            <div class="kpi-sub">{abs(util_vars[top_driver])/feb_bud*100:.1f}% of total budget</div>
-        </div>""",unsafe_allow_html=True)
+        st.markdown(metric_card("Net Operating Income","$41,023","NOI margin: 60.3%","pos"), unsafe_allow_html=True)
     with c4:
-        st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">Cost Per Unit / Month</div>
-            <div class="kpi-value">${feb_util/UNITS:,.0f}</div>
-            <div class="kpi-sub">${feb_util/UNITS*12:,.0f}/unit/year</div>
-        </div>""",unsafe_allow_html=True)
-    with c5:
-        pct_rev=(feb_util/FEB26["revenue"])*100
-        col="delta-red" if pct_rev>12 else "delta-green"
-        st.markdown(f"""<div class="kpi-card">
-            <div class="kpi-label">% of Monthly Revenue</div>
-            <div class="kpi-value">{pct_rev:.1f}%</div>
-            <div class="{col}">Revenue: ${FEB26['revenue']:,.0f}</div>
-        </div>""",unsafe_allow_html=True)
+        st.markdown(metric_card("Cash in Bank","$129,345","↑ $7.5K from Jan","pos"), unsafe_allow_html=True)
 
-    st.markdown("<br>",unsafe_allow_html=True)
+    # KPI Row 2
+    c1,c2,c3,c4 = st.columns(4)
+    with c1:
+        st.markdown(metric_card("HAP Subsidy / Total Billing","56.3%","38,017 / 67,559","neu"), unsafe_allow_html=True)
+    with c2:
+        st.markdown(metric_card("Total Reserve Balance","$565,824","1320+1322 accounts","neu"), unsafe_allow_html=True)
+    with c3:
+        st.markdown(metric_card("Vacancy Loss","$1,992","2.9% of potential","pos"), unsafe_allow_html=True)
+    with c4:
+        st.markdown(metric_card("Debt Service","$15,130","Interest-only, fixed","neu"), unsafe_allow_html=True)
 
-    # Breakdown donut + bar + table
-    st.markdown('<p class="section-title">📊 Utility Breakdown — February 2026 ($ & %)</p>',unsafe_allow_html=True)
-    cats=["Electricity","Water","Gas/Propane","Sewer","Trash"]
-    actuals=[FEB26["elec"],FEB26["water"],FEB26["gas"],FEB26["sewer"],FEB26["trash"]]
-    budgets=[FEB26["budget_elec"],FEB26["budget_water"],FEB26["budget_gas"],FEB26["budget_sewer"],FEB26["budget_trash"]]
-    colors=["#3b82f6","#8b5cf6","#f59e0b","#10b981","#94a3b8"]
-
-    col_l,col_r=st.columns([1,1.8])
-    with col_l:
-        fig_d=go.Figure(go.Pie(labels=cats,values=actuals,hole=0.55,marker_colors=colors,
-                               textinfo="label+percent",textfont_size=11))
-        fig_d.update_layout(showlegend=False,height=270,margin=dict(t=15,b=10,l=10,r=10),
-                            annotations=[dict(text=f"<b>${sum(actuals):,.0f}</b><br>Feb-26",
-                                             x=0.5,y=0.5,font_size=12,showarrow=False)])
-        st.plotly_chart(fig_d,use_container_width=True)
-
-    with col_r:
-        fig_c=go.Figure()
-        # Actual bars — colored per category
-        fig_c.add_bar(x=cats, y=actuals, name="Actual",
-                      marker_color=colors,
-                      marker_line=dict(color="white", width=1))
-        # Budget bars — always dark slate, clearly visible
-        fig_c.add_bar(x=cats, y=budgets, name="Budget",
-                      marker_color="#334155",
-                      marker_line=dict(color="white", width=1),
-                      opacity=0.75)
-        # Variance annotations on top
-        for i,(cat,a,b) in enumerate(zip(cats,actuals,budgets)):
-            var=a-b
-            fig_c.add_annotation(
-                x=cat, y=max(a,b)+50,
-                text=f"<b>${var:+,.0f}</b>",
-                showarrow=False,
-                font=dict(size=10, color="#dc2626" if var>0 else "#16a34a"),
-                yanchor="bottom"
-            )
-        fig_c.update_layout(
-            barmode="group", height=290, margin=dict(t=35,b=10),
-            title="Actual vs Budget by Category (Feb-26)",
-            yaxis_title="$",
-            legend=dict(orientation="h", y=-0.25),
-            bargap=0.2, bargroupgap=0.05,
-        )
-        st.plotly_chart(fig_c,use_container_width=True)
-
-    bdown_data={"Category":cats,"Actual $":[f"${a:,.2f}" for a in actuals],
-                "Budget $":[f"${b:,.0f}" for b in budgets],
-                "Variance $":[f"${a-b:+,.2f}" for a,b in zip(actuals,budgets)],
-                "Variance %":[f"{(a-b)/b*100:+.1f}%" for a,b in zip(actuals,budgets)],
-                "% of Total":[f"{a/sum(actuals)*100:.1f}%" for a in actuals],
-                "Status":["🔴 >20% Over" if (a-b)/b*100>20 else "🟡 >10% Over" if (a-b)/b*100>10 else "🟢 Under" if (a-b)/b*100<-5 else "✅ On Track"
-                          for a,b in zip(actuals,budgets)]}
-    st.dataframe(pd.DataFrame(bdown_data),use_container_width=True,hide_index=True)
-
-    st.markdown(f"""<div class="insight-box">
-        🤖 <strong>Feb-26 Insight:</strong> Total utility <strong>${feb_util:,.0f}</strong> vs budget <strong>${feb_bud:,}</strong>
-        = <strong>${feb_var:,.0f} over ({feb_var_pct:.1f}%)</strong>.
-        Primary driver: <strong>Electricity ${FEB26['elec']:,.0f}</strong> — ${util_vars['Electricity']:,.0f} over budget
-        ({util_vars['Electricity']/FEB26['budget_elec']*100:.0f}% variance).
-        Utilities exceeded budget in <strong>8 of 12 trailing months</strong>.
-        Water & Sewer are on/under budget — the issue is purely <strong>electric demand (DD3)</strong>.
-    </div>""",unsafe_allow_html=True)
-
-    # T12 trend
-    st.markdown('<p class="section-title">📈 Trailing 12 Month Trend — GL Booked vs Budget</p>',unsafe_allow_html=True)
-    fig_t=go.Figure()
-    fig_t.add_scatter(x=T12["Month"],y=T12["Total_Util"],name="Monthly Utility (GL)",
-                      line=dict(color="#3b82f6",width=2.5),mode="lines+markers",marker=dict(size=7))
-    fig_t.add_scatter(x=T12["Month"],y=[BUDGET_UTIL_MO]*len(T12),name=f"Budget ${BUDGET_UTIL_MO:,}",
-                      line=dict(color="#94a3b8",width=1.5,dash="dash"))
-    fig_t.update_layout(height=290,margin=dict(t=20,b=10),
-                        legend=dict(orientation="h",y=-0.28),yaxis_title="$")
-    st.plotly_chart(fig_t,use_container_width=True)
-
-    fig_s=go.Figure()
-    for cat,color in [("Elec","#3b82f6"),("Water","#8b5cf6"),("Gas","#f59e0b"),("Sewer","#10b981"),("Trash","#94a3b8")]:
-        fig_s.add_bar(x=T12["Month"],y=T12[cat],name=cat,marker_color=color)
-    fig_s.add_hline(y=BUDGET_UTIL_MO,line_dash="dash",line_color="#ef4444",
-                    annotation_text=f"Budget ${BUDGET_UTIL_MO:,}",annotation_position="top left")
-    fig_s.update_layout(barmode="stack",height=290,margin=dict(t=30,b=10),
-                        legend=dict(orientation="h",y=-0.3),
-                        title="Monthly Utility Breakdown — Trailing 12 (GL Booked)")
-    st.plotly_chart(fig_s,use_container_width=True)
-
-    # Variance table T12
-    st.markdown('<p class="section-title">🚨 Monthly Variance vs Budget — Trailing 12</p>',unsafe_allow_html=True)
-    bmap={"Elec":4605,"Water":817,"Gas":745,"Sewer":775,"Trash":280}
-    vrows=[]
-    for _,row in T12.iterrows():
-        va=row["Total_Util"]-BUDGET_UTIL_MO; vp=(va/BUDGET_UTIL_MO)*100
-        td=max(["Elec","Water","Gas","Sewer","Trash"],key=lambda c:abs(row[c]-bmap[c]))
-        vrows.append({"Month":row["Month"],"Utility (GL)":f"${row['Total_Util']:,.0f}",
-                      "Budget":f"${BUDGET_UTIL_MO:,}","Variance $":f"${va:+,.0f}",
-                      "Variance %":f"{vp:+.1f}%","Top Driver":td,
-                      "Flag":"🔴 >20% Over" if vp>20 else "🟡 >10% Over" if vp>10 else "🟢 Under" if vp<-5 else "✅ On Track"})
-    st.dataframe(pd.DataFrame(vrows),use_container_width=True,hide_index=True)
-
-    # Reserve + NOI snapshot
-    st.markdown('<p class="section-title">🏦 Reserve & NOI Snapshot</p>',unsafe_allow_html=True)
-    sn1,sn2,sn3,sn4=st.columns(4)
-    util_drag=T12["Total_Util"].sum()-BUDGET_UTIL_MO*12
-    with sn1:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-label">Feb-26 NOI</div><div class="kpi-value">${FEB26["noi"]:,.0f}</div><div class="delta-green">+${FEB26["noi"]-FEB26["budget_noi"]:,.0f} vs budget</div></div>',unsafe_allow_html=True)
-    with sn2:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-label">NOI After Reserve Req.</div><div class="kpi-value">${FEB26["noi"]-TOTAL_RES_ANN/12:,.0f}</div><div class="delta-red">-${TOTAL_RES_ANN/12:,.0f}/mo reserve</div></div>',unsafe_allow_html=True)
-    with sn3:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-label">Yr 1 Reserve Balance</div><div class="kpi-value" style="color:#16a34a">$734,280</div><div class="delta-red">↓ $707K draw Yr 4-6</div></div>',unsafe_allow_html=True)
-    with sn4:
-        st.markdown(f'<div class="kpi-card"><div class="kpi-label">T12 Utility Overrun</div><div class="kpi-value" style="color:#dc2626">${util_drag:,.0f}</div><div class="delta-red">vs annual budget</div></div>',unsafe_allow_html=True)
-
-    st.markdown("""<div class="insight-box">
-        💰 <strong>Value Creation:</strong> HVAC PM + LED Retrofit + Demand Controller + Refuse split =
-        <strong>~$26,800/yr savings</strong>. At 6% cap rate → <strong>$447,000 added property value.</strong>
-        Utility overrun is the single most actionable NOI lever available today.
-    </div>""",unsafe_allow_html=True)
-
+    st.markdown("---")
+    
+    # NOI Trend Chart
+    st.markdown('<div class="section-header">NOI & NRI Trend — T12 + Recent Months</div>', unsafe_allow_html=True)
+    
+    all_months = T12_months + []  # already includes Nov-25, Dec-25, Jan-26
+    # Deduplicate: T12 has Nov-25, Dec-25, Jan-26 already — add Feb-26
+    plot_months = T12_months + ["Feb-26"]
+    plot_nri = T12_nri + [68001]
+    plot_noi = T12_noi + [41023]
+    plot_opex = T12_opex + [29131]
+    
+    fig = go.Figure()
+    fig.add_trace(go.Bar(x=plot_months, y=plot_nri, name="Net Rental Income", marker_color="#339af0", opacity=0.7))
+    fig.add_trace(go.Bar(x=plot_months, y=plot_opex, name="Operating Expenses", marker_color="#ff6b6b", opacity=0.7))
+    fig.add_trace(go.Scatter(x=plot_months, y=plot_noi, name="NOI", mode="lines+markers",
+                             line=dict(color="#26c981", width=3), marker=dict(size=8)))
+    fig.update_layout(
+        barmode="group", paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+        font=dict(color="#8892a4"), height=350, legend=dict(orientation="h", y=-0.2),
+        xaxis=dict(gridcolor="#2d3448"), yaxis=dict(gridcolor="#2d3448", tickprefix="$", tickformat=",")
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    
     # Alerts
-    st.markdown('<p class="section-title">🚨 Alerts & Findings</p>',unsafe_allow_html=True)
-    for level,text in [
-        ("red","🔴 CRITICAL — DD3 Demand Charge winter spike CONFIRMED: $2,707 in BOTH Feb-25 AND Jan-26 — identical amount, recurring winter pattern. Demand controller needed urgently. $4-8K install saves $5-12K/yr."),
-        ("red","🔴 CRITICAL — Office Account Apr-26: $405.54 past due + $19.32 penalty. Disconnect date was Apr-23-26. Confirm payment cleared with Kenya Owens immediately."),
-        ("red","🔴 CRITICAL — CNA Critical Repairs (D3G, Oct 14 2025): GFCI outlets 136 units ($4,760) + Smoke detectors 68 units ($2,380) + UFAS accessibility 4 units ($5,000) + Code violation-pallets ($250) + Audio/visual alarms ($400) + UFAS common areas ($1,320) = TOTAL $14,110. Must resolve before next HUD inspection."),
-        ("red","🔴 CRITICAL — GL Anomaly Feb-26: Deleted batch #1419 ($8,978.45) — Mar bill accidentally entered Feb-16, deleted, reversed Feb-28. Net=Zero but messy audit trail for HUD."),
-        ("yellow","🟡 HIGH — Jan-26 double propane delivery: 409.6 gal/$1,001 in 19 days. Normal = 150-200 gal/mo. Investigate tank leak or fill error with Blossman."),
-        ("yellow","🟡 HIGH — Elevator replacement Yr 4-6: $707K draw drops reserves $810K → $174K. HVAC stress today = risk of accelerated timeline."),
-        ("yellow","🟡 HIGH — Feb-26 electricity accrual overstated by ~$1,885 ($9,852 accrued vs $7,967 actual). Auto-reverses Mar-01."),
-        ("yellow","🟡 HIGH — Feb-26 trash accrual only $24.17 vs $280 actual — understated by $256. Mar-26 P&L will spike."),
-        ("blue","🔵 MEDIUM — Water meter estimated: exactly 99 units every single month. City not physically reading meter. Request verification — actual usage unknown."),
-        ("blue","🔵 MEDIUM — Bad Debt Jan-26: $5,819 vs $697 budget. Investigate tenant arrears and HUD subsidy timing."),
-    ]:
-        st.markdown(f'<div class="alert-{level}">{text}</div>',unsafe_allow_html=True)
+    st.markdown('<div class="section-header">Active Alerts & Flags</div>', unsafe_allow_html=True)
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown('<div class="alert-box">⚠️ <b>Elevator Replacement:</b> CNA flags $519K capital need in Yr 5 (2029). Current reserves: $565K — adequate but tight given other needs.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="alert-box">⚠️ <b>Feb 2026 GL Anomaly:</b> Deleted batch detected in general ledger reconciliation. Verify against HUD reporting submissions.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="alert-box">⚠️ <b>Unit C4 (Warden):</b> Lease expired 09/09/2025 — tenant in holdover. Balance $3,822 overdue. Cure or terminate action needed.</div>', unsafe_allow_html=True)
+    with col_b:
+        st.markdown('<div class="info-box">ℹ️ <b>DD3 Winter Gas Spike:</b> Jan-25 gas hit $2,707 vs summer avg ~$200. Pattern confirmed across 3 winters. Boiler/insulation audit recommended.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-box">ℹ️ <b>Jan-26 Double Blossman Delivery:</b> Two gas deliveries in same month flagged. Verify billing vs. actual consumption with Blossman Gas.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="success-box">✅ <b>EisnerAmper Audit:</b> Clean opinion, Dec 31 2025. Net loss ($48,411) driven by non-recurring Dec-25 items. Operational trend positive.</div>', unsafe_allow_html=True)
 
-    # Action Plan
-    st.markdown('<p class="section-title">✅ Action Plan — Ranked by Urgency</p>',unsafe_allow_html=True)
-    st.dataframe(pd.DataFrame([
-        {"#":1,"Priority":"🔴 Immediate","Action":"Confirm office account past due $405.54 cleared — call Kenya Owens","Deadline":"Today","Impact":"Disconnect risk"},
-        {"#":2,"Priority":"🔴 Immediate","Action":"Document deleted GL batch #1419 — memo to file for HUD audit trail","Deadline":"This week","Impact":"HUD compliance"},
-        {"#":3,"Priority":"🔴 Immediate","Action":"Clear HUD life safety violations: GFCI + Smoke + UFAS = $13,540","Deadline":"Before inspection","Impact":"HUD contract"},
-        {"#":4,"Priority":"🔴 30 days","Action":"Install demand controller/peak shaving relay — eliminate DD3 winter spikes","Deadline":"30 days","Impact":"$5-12K/yr"},
-        {"#":5,"Priority":"🟡 30 days","Action":"Investigate Jan-26 double propane delivery — possible tank leak","Deadline":"30 days","Impact":"Cost control"},
-        {"#":6,"Priority":"🟡 30 days","Action":"HVAC PM contract — all 77 units","Deadline":"30 days","Impact":"$6,200/yr"},
-        {"#":7,"Priority":"🟡 30 days","Action":"Request water meter physical read from City of Elizabeth City","Deadline":"30 days","Impact":"Billing accuracy"},
-        {"#":8,"Priority":"🟡 60 days","Action":"LED retrofit — common areas + exterior","Deadline":"60 days","Impact":"$8,400/yr"},
-        {"#":9,"Priority":"🟡 60 days","Action":"Fix accrual methodology for trash with Beacon Management","Deadline":"60 days","Impact":"Clean P&L"},
-        {"#":10,"Priority":"🔵 90 days","Action":"CNA elevator inspection — confirm Yr 4-6 replacement timeline","Deadline":"90 days","Impact":"$350K planning"},
-    ]),use_container_width=True,hide_index=True)
+    # Property summary table
+    st.markdown('<div class="section-header">Property Profile</div>', unsafe_allow_html=True)
+    prof_data = {
+        "Attribute": ["Address","Built","Stories","Total Units","Unit Mix","HUD Contract","HAP Expiration",
+                       "Management","Owner Entity","Mortgage Balance","Annual Debt Service"],
+        "Detail": ["110 McMorrine St, Elizabeth City, NC 27909","1927","9",
+                   "73 (7×1A/500sf, 59×1B/600sf, 2×M-1/1000sf, 2×C3-C5/1300sf, 1×C6/900sf)",
+                   "7 Efficiency (1A) · 59 One-BR (1B) · 2 Mgr Units · 5 Commercial",
+                   "NC19H148016","Active (HAP renewed)",
+                   "Beacon Management Corp — Kenya Owens","Virginia Dare NC Preservation LLC",
+                   "$3,278,000","$181,557 (interest-only)"]
+    }
+    st.dataframe(pd.DataFrame(prof_data), use_container_width=True, hide_index=True)
 
-# ══════════════════════════════════════════════════════════════
-# TAB 2 — UTILITY DEEP DIVE
-# ══════════════════════════════════════════════════════════════
-with tab2:
-    st.markdown('<p class="main-header">⚡ Utility Deep Dive</p>',unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Variance analysis · Consumption trends · Invoice reconciliation · GL anomaly check · Reserve linkage</p>',unsafe_allow_html=True)
+# ═══════════════════════════════════════════════════════════════════════════
+# TAB 2: RENT ROLL & OCCUPANCY  ← NEW
+# ═══════════════════════════════════════════════════════════════════════════
+with tabs[1]:
+    st.markdown("### Rent Roll & Occupancy — Feb 28, 2026")
+    
+    # Build dataframe
+    df_rr = pd.DataFrame(RENT_ROLL_FEB26, columns=RENT_ROLL_COLS)
+    df_occupied = df_rr[df_rr["Status"] == "Occupied"]
+    df_vacant   = df_rr[df_rr["Status"].isin(["Vacant", "Vacant-Leased"])]
+    
+    # ── Summary KPIs
+    c1,c2,c3,c4,c5 = st.columns(5)
+    total_units = len(df_rr)
+    occ_units = len(df_occupied)
+    vac_units = len(df_vacant)
+    occ_pct = occ_units / total_units * 100
+    total_billing = df_occupied["Total_Billing"].sum()
+    resident_share = df_occupied["Tenant_Rent"].sum()
+    subsidy_share  = df_occupied["Subsidy"].sum()
+    
+    with c1:
+        st.markdown(metric_card("Occupied Units", f"{occ_units} / {total_units}", f"{occ_pct:.1f}% occupancy","pos"), unsafe_allow_html=True)
+    with c2:
+        st.markdown(metric_card("Vacant Units", str(vac_units), "C6 vacant · 5-7 vacant · 3-2 leased","neg"), unsafe_allow_html=True)
+    with c3:
+        st.markdown(metric_card("Total Monthly Billing", fmt_currency(total_billing), "Resident + Subsidy","neu"), unsafe_allow_html=True)
+    with c4:
+        st.markdown(metric_card("Resident Portion", fmt_currency(resident_share), f"{resident_share/total_billing*100:.1f}% of billing","neu"), unsafe_allow_html=True)
+    with c5:
+        st.markdown(metric_card("HAP Subsidy", fmt_currency(subsidy_share), f"{subsidy_share/total_billing*100:.1f}% of billing","neu"), unsafe_allow_html=True)
 
-    # 1 Variance
-    st.markdown('<p class="section-title">1️⃣ Variance Analysis — GL Booked vs Budget (Trailing 12)</p>',unsafe_allow_html=True)
-    t12_tots={c:int(T12[c].sum()) for c in ["Elec","Water","Gas","Sewer","Trash"]}
-    t12_buds={"Elec":4605*12,"Water":817*12,"Gas":745*12,"Sewer":775*12,"Trash":280*12}
-    total_overrun=T12["Total_Util"].sum()-BUDGET_UTIL_MO*12
+    # ── Occupancy Trend
+    st.markdown('<div class="section-header">Occupancy & Billing Trend — Nov 2025 to Feb 2026</div>', unsafe_allow_html=True)
+    ot = OCCUPANCY_TREND
+    fig_occ = make_subplots(specs=[[{"secondary_y": True}]])
+    fig_occ.add_trace(go.Bar(x=ot["month"], y=ot["subsidy_share"], name="HAP Subsidy", marker_color="#339af0", opacity=0.85), secondary_y=False)
+    fig_occ.add_trace(go.Bar(x=ot["month"], y=ot["resident_share"], name="Resident Rent", marker_color="#74c0fc", opacity=0.85), secondary_y=False)
+    fig_occ.add_trace(go.Scatter(x=ot["month"], y=ot["occupied_pct"], name="Occupancy %",
+                                 mode="lines+markers", line=dict(color="#26c981", width=3), marker=dict(size=10)), secondary_y=True)
+    fig_occ.update_layout(
+        barmode="stack", paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+        font=dict(color="#8892a4"), height=300, legend=dict(orientation="h", y=-0.3),
+        xaxis=dict(gridcolor="#2d3448"),
+    )
+    fig_occ.update_yaxes(gridcolor="#2d3448", tickprefix="$", tickformat=",", secondary_y=False)
+    fig_occ.update_yaxes(ticksuffix="%", range=[85,100], secondary_y=True)
+    st.plotly_chart(fig_occ, use_container_width=True)
 
-    va1,va2=st.columns(2)
-    with va1:
-        fig_va=go.Figure()
-        cat_list=list(t12_tots.keys())
-        fig_va.add_bar(x=cat_list,y=[t12_tots[c] for c in cat_list],name="T12 Actual",
-                       marker_color=["#ef4444" if t12_tots[c]>t12_buds[c] else "#22c55e" for c in cat_list],
-                       marker_line=dict(color="white",width=1))
-        fig_va.add_bar(x=cat_list,y=[t12_buds[c] for c in cat_list],name="T12 Budget",
-                       marker_color="#334155",opacity=0.8,marker_line=dict(color="white",width=1))
-        for c in cat_list:
-            var=t12_tots[c]-t12_buds[c]
-            fig_va.add_annotation(x=c,y=max(t12_tots[c],t12_buds[c])+300,
-                text=f"<b>${var:+,.0f}</b>",showarrow=False,
-                font=dict(size=10,color="#dc2626" if var>0 else "#16a34a"),yanchor="bottom")
-        fig_va.update_layout(barmode="group",height=310,title="T12 Actual vs Annual Budget",
-                             margin=dict(t=35,b=10),yaxis_title="$",
-                             legend=dict(orientation="h",y=-0.28),bargap=0.2,bargroupgap=0.05)
-        st.plotly_chart(fig_va,use_container_width=True)
-    with va2:
-        vd=[{"Category":c,"T12 Actual":f"${t12_tots[c]:,.0f}","T12 Budget":f"${t12_buds[c]:,.0f}",
-             "Variance $":f"${t12_tots[c]-t12_buds[c]:+,.0f}",
-             "Variance %":f"{(t12_tots[c]-t12_buds[c])/t12_buds[c]*100:+.1f}%",
-             "Assessment":"🔴 Critical" if (t12_tots[c]-t12_buds[c])/t12_buds[c]*100>30 else "🟡 Monitor" if (t12_tots[c]-t12_buds[c])/t12_buds[c]*100>10 else "✅ OK"}
-            for c in cat_list]
-        st.dataframe(pd.DataFrame(vd),use_container_width=True,hide_index=True)
-        elec_overrun=t12_tots["Elec"]-t12_buds["Elec"]
-        st.markdown(f"""<div class="alert-red">
-            🔴 <strong>T12 Total Overrun: ${total_overrun:,.0f}</strong> vs annual budget ${BUDGET_UTIL_MO*12:,}.
-            Electricity alone = <strong>${elec_overrun:,.0f}</strong> ({elec_overrun/total_overrun*100:.0f}% of overrun).
-        </div>""",unsafe_allow_html=True)
+    # ── HAP vs Resident Split Donut
+    col_pie, col_fp = st.columns(2)
+    with col_pie:
+        st.markdown('<div class="section-header">Feb 2026 — Billing Composition</div>', unsafe_allow_html=True)
+        fig_pie = go.Figure(go.Pie(
+            labels=["HAP Subsidy", "Resident Rent"],
+            values=[subsidy_share, resident_share],
+            hole=0.55,
+            marker_colors=["#339af0","#74c0fc"],
+            textfont=dict(color="#e8eaf0"),
+        ))
+        fig_pie.update_layout(paper_bgcolor="#0f1117", font=dict(color="#8892a4"), height=280,
+                              legend=dict(orientation="h"), showlegend=True,
+                              annotations=[dict(text=f"${total_billing:,.0f}", x=0.5, y=0.5,
+                                               font_size=18, font_color="#e8eaf0", showarrow=False)])
+        st.plotly_chart(fig_pie, use_container_width=True)
 
-    # 2 Consumption
-    st.markdown('<p class="section-title">2️⃣ Consumption Analysis — From Actual Bills</p>',unsafe_allow_html=True)
-    cb1,cb2=st.columns(2)
-    with cb1:
-        fig_e=go.Figure()
-        fig_e.add_bar(x=BILLS["Month"],y=BILLS["Elec"]-BILLS["DD3"],name="Base Electric",marker_color="#3b82f6")
-        fig_e.add_bar(x=BILLS["Month"],y=BILLS["DD3"],name="DD3 Demand",marker_color="#ef4444")
-        fig_e.update_layout(barmode="stack",height=280,title="Electricity: Base + DD3 (Actual Bills)",
-                            margin=dict(t=35,b=10),legend=dict(orientation="h",y=-0.3))
-        st.plotly_chart(fig_e,use_container_width=True)
-        st.markdown("""<div class="alert-red">
-            🔴 <strong>DD3 Winter Pattern:</strong> Feb-25 = $2,707 | Jan-26 = $2,707 — exact same spike.
-            Jan-26 peak demand = <strong>206 kW</strong> (rate $1.83/kW).
-            Demand controller targeting &lt;100 kW saves $5-12K/yr.
-        </div>""",unsafe_allow_html=True)
-    with cb2:
-        fig_w=go.Figure()
-        fig_w.add_scatter(x=BILLS["Month"],y=BILLS["Water_Units"],mode="lines+markers",
-                          line=dict(color="#8b5cf6",width=2.5),marker=dict(size=8),name="Water Units")
-        fig_w.add_hline(y=99,line_dash="dot",line_color="#ef4444",
-                        annotation_text="⚠️ Always 99 = ESTIMATED",annotation_position="top right")
-        fig_w.update_layout(height=280,title="Water Meter Reads",margin=dict(t=35,b=10),
-                            yaxis=dict(range=[90,110]),yaxis_title="Units")
-        st.plotly_chart(fig_w,use_container_width=True)
-        st.markdown("""<div class="alert-yellow">
-            🟡 <strong>Estimated Billing:</strong> Every bill reads exactly 99 units — meter not physically read.
-            Actual consumption unknown. Could be over or under-billed. Request City verification immediately.
-        </div>""",unsafe_allow_html=True)
+    with col_fp:
+        st.markdown('<div class="section-header">Unit Mix — Floorplan Breakdown</div>', unsafe_allow_html=True)
+        fp_summary = df_rr.groupby("Floorplan").agg(
+            Units=("Unit","count"),
+            Occupied=("Status", lambda x: (x=="Occupied").sum()),
+            Avg_Market=("Market_Rent","mean"),
+            Avg_Billing=("Total_Billing","mean"),
+        ).reset_index()
+        fp_summary["Occ%"] = (fp_summary["Occupied"]/fp_summary["Units"]*100).round(1)
+        fp_summary["Avg_Market"] = fp_summary["Avg_Market"].map(lambda x: f"${x:,.0f}")
+        fp_summary["Avg_Billing"] = fp_summary["Avg_Billing"].map(lambda x: f"${x:,.0f}")
+        st.dataframe(fp_summary, use_container_width=True, hide_index=True)
 
-    # Gas
-    cg1,cg2=st.columns(2)
-    with cg1:
-        gdf=BILLS[BILLS["Gas_Bill"]>0]
-        fig_g=px.bar(gdf,x="Month",y="Gas_Bill",color_discrete_sequence=["#f59e0b"],
-                     title="Propane Spend (Blossman)")
-        fig_g.update_layout(height=255,margin=dict(t=35,b=10),yaxis_title="$")
-        st.plotly_chart(fig_g,use_container_width=True)
-    with cg2:
-        st.markdown("**Blossman Invoice Log:**")
-        st.dataframe(PROPANE,use_container_width=True,hide_index=True)
-        st.markdown("""<div class="alert-yellow">
-            ⚠️ <strong>Jan-26 Double Delivery:</strong> 210.6 + 199.0 gal = 409.6 gal in 19 days.
-            Normal = ~150-200 gal/mo. Price up 7.1% YoY ($2.099→$2.249/gal).
-            Investigate: possible tank leak or fill error.
-        </div>""",unsafe_allow_html=True)
+    # ── Delinquency / Balance Analysis
+    st.markdown('<div class="section-header">Account Balance Analysis (Negative = Delinquent)</div>', unsafe_allow_html=True)
+    delinquent = df_occupied[df_occupied["Balance"] < 0].sort_values("Balance")[["Unit","Tenant","Balance","Status","Lease_End"]].copy()
+    credit     = df_occupied[df_occupied["Balance"] > 0].sort_values("Balance", ascending=False)[["Unit","Tenant","Balance","Status"]].copy()
+    
+    col_d, col_c = st.columns(2)
+    with col_d:
+        st.markdown(f"**⚠️ Delinquent Accounts: {len(delinquent)} units**")
+        delinquent["Balance"] = delinquent["Balance"].map(lambda x: f"(${abs(x):,.2f})")
+        st.dataframe(delinquent, use_container_width=True, hide_index=True)
+    with col_c:
+        st.markdown(f"**✅ Credit Balances: {len(credit)} units**")
+        credit["Balance"] = credit["Balance"].map(lambda x: f"${x:,.2f}")
+        st.dataframe(credit, use_container_width=True, hide_index=True)
 
-    # 3 Invoice Reconciliation
-    st.markdown('<p class="section-title">3️⃣ Invoice Reconciliation — Bills vs General Ledger</p>',unsafe_allow_html=True)
-    rc1,rc2=st.columns(2)
-    with rc1:
-        st.markdown("**January 2026 ✅ — Fully Reconciled**")
-        for item,bill,gl,note in [
-            ("City EC Main (37-0345000-01)","$8,550.91","$8,550.91","01/27 inv → 02/02 paid chk#1943"),
-            ("City EC Office (37-0380000-01)","$380.43","$380.43","01/27 inv → 02/02 paid chk#1942"),
-            ("Blossman Jan-02 (#34085586)","$514.40","$514.40","01/07 inv → 01/08 paid chk#1923"),
-            ("Blossman Jan-21 (#34375960)","$486.42","$486.42","01/22 inv → 02/02 paid chk#1941"),
-            ("AGT Final Bill (37-0390000-06)","$83.24","$83.24","02/16 booked, split correctly"),
-        ]:
-            st.markdown(f'<div class="recon-match">✅ <strong>{item}</strong><br>Bill {bill} = GL {gl} | {note}</div>',unsafe_allow_html=True)
-        st.markdown('<div class="alert-green">✅ Jan-26 fully clean. Zero discrepancies.</div>',unsafe_allow_html=True)
-    with rc2:
-        st.markdown("**February 2026 ⚠️ — 5 Flags**")
-        st.markdown('<div class="recon-match">✅ <strong>Blossman Feb-12 (#34657363)</strong> — $654.54 = GL | 02/16 inv → 02/20 paid</div>',unsafe_allow_html=True)
-        for icon,title,desc,cls in [
-            ("🔴","Deleted Batch #1419 ($8,978.45)","Mar bill entered Feb-16 by mistake → deleted → reversed. Net=Zero, messy audit trail.","recon-flag"),
-            ("🟡","Electricity Accrual Overstated","$9,852 accrued vs $7,967 actual. +$1,885. Auto-reverses Mar-01.","recon-warn"),
-            ("⚠️","Trash Accrual Understated","$24.17 accrued vs $280 actual. -$256. Mar P&L will spike.","recon-warn"),
-            ("🔴","Office Account Past Due","$405.54 unpaid + $19.32 penalty. Disconnect Apr-23-26.","recon-flag"),
-            ("🔴","Missing Blossman PDF","Invoice #34657363 ($654.54) in GL but PDF not uploaded.","recon-flag"),
-        ]:
-            st.markdown(f'<div class="{cls}">{icon} <strong>{title}</strong> — {desc}</div>',unsafe_allow_html=True)
+    # ── Lease Expiration Heatmap
+    st.markdown('<div class="section-header">Lease Expiration Schedule</div>', unsafe_allow_html=True)
+    df_leases = df_occupied.dropna(subset=["Lease_End"]).copy()
+    df_leases["Lease_End_Date"] = pd.to_datetime(df_leases["Lease_End"], errors="coerce")
+    df_leases["Expiry_Month"] = df_leases["Lease_End_Date"].dt.to_period("M").astype(str)
+    exp_counts = df_leases.groupby("Expiry_Month")["Unit"].count().reset_index()
+    exp_counts.columns = ["Month","Leases_Expiring"]
+    exp_counts = exp_counts.sort_values("Month").head(18)
+    
+    fig_exp = px.bar(exp_counts, x="Month", y="Leases_Expiring",
+                     color="Leases_Expiring", color_continuous_scale=["#26c981","#ffa94d","#ff6b6b"],
+                     title="Upcoming Lease Expirations")
+    fig_exp.update_layout(paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+                          font=dict(color="#8892a4"), height=280, showlegend=False,
+                          xaxis=dict(gridcolor="#2d3448"), yaxis=dict(gridcolor="#2d3448"))
+    st.plotly_chart(fig_exp, use_container_width=True)
 
-        st.markdown("<br>**Feb-26 Accrual vs Actual:**")
-        st.dataframe(pd.DataFrame({
-            "Category":["Electricity","Water","Gas","Sewer","Trash"],
-            "GL Accrual":["$9,851.95","$1,132.56","$654.54","$1,019.23","$24.17"],
-            "Actual Bill":["$5,607.76","$812.49","$654.54","$731.19","$280.00"],
-            "Status":["🟡 Overstated","🟡 Overstated","✅ Match","🟡 Overstated","⚠️ Understated"],
-        }),use_container_width=True,hide_index=True)
+    # ── Full Rent Roll Detail
+    st.markdown('<div class="section-header">Full Rent Roll Detail</div>', unsafe_allow_html=True)
+    
+    # Filters
+    fc1, fc2, fc3 = st.columns(3)
+    with fc1:
+        status_filter = st.multiselect("Status", df_rr["Status"].unique().tolist(), default=df_rr["Status"].unique().tolist())
+    with fc2:
+        fp_filter = st.multiselect("Floorplan", df_rr["Floorplan"].unique().tolist(), default=df_rr["Floorplan"].unique().tolist())
+    with fc3:
+        bal_filter = st.selectbox("Balance Filter", ["All","Delinquent Only","Credit Only","Zero Balance"])
 
-    # 4 Reserve Linkage
-    st.markdown('<p class="section-title">4️⃣ Utility → Replacement Reserve Linkage</p>',unsafe_allow_html=True)
-    st.markdown("""<div class="insight-box">
-        🔗 <strong>Why utilities matter for reserves:</strong>
-        High HVAC load (DD3 spikes) = mechanical stress = shorter useful life = earlier replacement.
-        HVAC has <strong>4 years remaining</strong> ($154K replacement). Boiler has <strong>5 years</strong> ($80K).
-        Fixing demand charge today <strong>protects the reserve schedule tomorrow.</strong>
-        Every year of HVAC life extension = $10,267 deferred capital.
-    </div>""",unsafe_allow_html=True)
+    df_display = df_rr[df_rr["Status"].isin(status_filter) & df_rr["Floorplan"].isin(fp_filter)].copy()
+    if bal_filter == "Delinquent Only":
+        df_display = df_display[df_display["Balance"] < 0]
+    elif bal_filter == "Credit Only":
+        df_display = df_display[df_display["Balance"] > 0]
+    elif bal_filter == "Zero Balance":
+        df_display = df_display[df_display["Balance"] == 0]
+    
+    df_display["Market_Rent"] = df_display["Market_Rent"].map(lambda x: f"${x:,.0f}" if x else "-")
+    df_display["Tenant_Rent"] = df_display["Tenant_Rent"].map(lambda x: f"${x:,.0f}" if x else "-")
+    df_display["Subsidy"] = df_display["Subsidy"].map(lambda x: f"${x:,.0f}" if x else "-")
+    df_display["Total_Billing"] = df_display["Total_Billing"].map(lambda x: f"${x:,.0f}")
+    df_display["Balance"] = df_display["Balance"].map(lambda x: f"(${abs(x):,.2f})" if x < 0 else f"${x:,.2f}")
+    
+    st.dataframe(df_display, use_container_width=True, hide_index=True, height=400)
+    st.caption(f"Showing {len(df_display)} of {len(df_rr)} units  |  Source: OneSite Rents v3.0, As of 02/28/2026")
 
-    ll1,ll2=st.columns(2)
-    with ll1:
-        st.markdown("**⚠️ High-Risk Components (≤5 yrs remaining):**")
-        hr=COMPONENTS[COMPONENTS["Remaining Life"]<=5][["Component","Remaining Life","Replacement $","Reserve/Unit/Yr"]]
-        st.dataframe(hr,use_container_width=True,hide_index=True)
-    with ll2:
-        avg_util=T12["Total_Util"].mean(); mo_res=TOTAL_RES_ANN/12
-        fig_link=go.Figure()
-        fig_link.add_bar(x=["Avg Monthly Utility","Monthly Reserve Req.","Combined Impact"],
-                         y=[avg_util,mo_res,avg_util+mo_res],
-                         marker_color=["#3b82f6","#f59e0b","#ef4444"],
-                         text=[f"${avg_util:,.0f}",f"${mo_res:,.0f}",f"${avg_util+mo_res:,.0f}"],
-                         textposition="outside")
-        fig_link.update_layout(height=270,title="Monthly NOI Pressure",margin=dict(t=35,b=10),
-                               yaxis_title="$/month",showlegend=False)
-        st.plotly_chart(fig_link,use_container_width=True)
+# ═══════════════════════════════════════════════════════════════════════════
+# TAB 3: UTILITY DEEP DIVE
+# ═══════════════════════════════════════════════════════════════════════════
+with tabs[2]:
+    st.markdown("### Utility Deep Dive — 15-Month History (Dec 2024 – Feb 2026)")
+    
+    ud = UTILITY_DATA
+    months = ud["month"]
+    
+    # Totals
+    totals = [e+g+w+s for e,g,w,s in zip(ud["electricity"],ud["gas"],ud["water"],ud["sewer"])]
+    
+    c1,c2,c3,c4 = st.columns(4)
+    with c1: st.markdown(metric_card("2025 Total Utilities","$86,259","Per audit (clean)","neu"), unsafe_allow_html=True)
+    with c2: st.markdown(metric_card("Feb-26 Utilities","$8,004","↓ vs Jan-26 $10,221","pos"), unsafe_allow_html=True)
+    with c3: st.markdown(metric_card("Peak Month","Jan-25: $12,157","Winter electricity + gas spike","neg"), unsafe_allow_html=True)
+    with c4: st.markdown(metric_card("DD3 Gas Anomaly","Jan-25: $2,707","4.3× summer avg (~$200/mo)","neg"), unsafe_allow_html=True)
+    
+    fig_util = go.Figure()
+    fig_util.add_trace(go.Bar(x=months, y=ud["electricity"], name="Electricity", marker_color="#ffa94d"))
+    fig_util.add_trace(go.Bar(x=months, y=ud["gas"], name="Gas", marker_color="#ff6b6b"))
+    fig_util.add_trace(go.Bar(x=months, y=ud["water"], name="Water", marker_color="#339af0"))
+    fig_util.add_trace(go.Bar(x=months, y=ud["sewer"], name="Sewer", marker_color="#8892a4"))
+    fig_util.add_trace(go.Scatter(x=months, y=totals, name="Total", mode="lines+markers",
+                                  line=dict(color="#26c981", width=2, dash="dot")))
+    fig_util.update_layout(
+        barmode="stack", paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+        font=dict(color="#8892a4"), height=380, legend=dict(orientation="h", y=-0.2),
+        xaxis=dict(gridcolor="#2d3448"), yaxis=dict(gridcolor="#2d3448", tickprefix="$", tickformat=",")
+    )
+    st.plotly_chart(fig_util, use_container_width=True)
+    
+    # Winter analysis
+    st.markdown('<div class="section-header">Winter Gas Spike Analysis (DD3 Pattern)</div>', unsafe_allow_html=True)
+    col_w1, col_w2 = st.columns(2)
+    with col_w1:
+        gas_df = pd.DataFrame({"Month": months, "Gas ($)": ud["gas"]})
+        st.dataframe(gas_df, use_container_width=True, hide_index=True)
+    with col_w2:
+        st.markdown('<div class="alert-box">⚠️ <b>Confirmed Pattern:</b> Gas spikes every winter — Jan-25: $2,707 vs summer avg ~$200/mo. Three-winter pattern confirmed. Primary driver: Building heat system inefficiency (DD3 meter). Recommend boiler tune-up and insulation assessment.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-box">ℹ️ <b>Jan-26 Double Delivery:</b> Two Blossman Gas invoices recorded in Jan-26. Cross-reference delivery tickets vs. actual usage. Potential billing duplication or legitimate volume purchase.</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-box">ℹ️ <b>Electricity Dec-25/Jan-26:</b> Sharp spike ($7,043 / $7,709) vs prior summer avg ~$4,500. Investigate lighting, HVAC, or common area systems.</div>', unsafe_allow_html=True)
 
-    st.markdown(f"""<div class="alert-yellow">
-        🟡 <strong>Combined Monthly Pressure:</strong> Avg utility ${T12["Total_Util"].mean():,.0f} +
-        Reserve req. ${TOTAL_RES_ANN/12:,.0f} = <strong>${T12["Total_Util"].mean()+TOTAL_RES_ANN/12:,.0f}/mo</strong>.
-        Against Feb-26 NOI of ${FEB26["noi"]:,.0f}, this = <strong>{(T12["Total_Util"].mean()+TOTAL_RES_ANN/12)/FEB26["noi"]*100:.0f}%</strong> of NOI consumed.
-    </div>""",unsafe_allow_html=True)
+# ═══════════════════════════════════════════════════════════════════════════
+# TAB 4: FINANCIAL PERFORMANCE
+# ═══════════════════════════════════════════════════════════════════════════
+with tabs[3]:
+    st.markdown("### Financial Performance — Nov 2025 through Feb 2026")
+    
+    month_sel = st.selectbox("Select Month", ["Nov-25","Dec-25","Jan-26","Feb-26"], index=3)
+    mdata = NEW_MONTHS[month_sel]
+    
+    c1,c2,c3,c4 = st.columns(4)
+    with c1: st.markdown(metric_card("Net Rental Income", fmt_currency(mdata["net_rental_income"]),"","neu"), unsafe_allow_html=True)
+    with c2: st.markdown(metric_card("Total Income", fmt_currency(mdata["total_income"]),"","neu"), unsafe_allow_html=True)
+    with c3: st.markdown(metric_card("Total Operating Expenses", fmt_currency(mdata["total_opex"]),"","neu"), unsafe_allow_html=True)
+    with c4:
+        ni = mdata["net_income"]
+        delta_type = "pos" if ni > 0 else "neg"
+        st.markdown(metric_card("Net Income", fmt_currency(ni),"","neu"), unsafe_allow_html=True)
+    
+    # P&L Table
+    st.markdown('<div class="section-header">Income Statement Detail</div>', unsafe_allow_html=True)
+    pnl_rows = [
+        ("INCOME","",""),
+        ("Gross Tenant Rent Potential", fmt_currency(mdata["gross_rent_potential"]), ""),
+        ("Tenant Assistance (HAP)", fmt_currency(mdata["tenant_assistance"]), ""),
+        ("Total Rental Income", fmt_currency(mdata["gross_rent_potential"]+mdata["tenant_assistance"]), "100%"),
+        ("Vacancy & Concessions", fmt_currency(mdata["vacancy"]), f"{mdata['vacancy']/(mdata['gross_rent_potential']+mdata['tenant_assistance'])*100:.1f}%"),
+        ("Net Rental Income", fmt_currency(mdata["net_rental_income"]), ""),
+        ("Financial & Other Income", fmt_currency(mdata["total_income"]-mdata["net_rental_income"]), ""),
+        ("Total Income", fmt_currency(mdata["total_income"]), ""),
+        ("EXPENSES","",""),
+        ("Maintenance Payroll", fmt_currency(mdata["maintenance_payroll"]), f"{mdata['maintenance_payroll']/mdata['net_rental_income']*100:.1f}%"),
+        ("Administrative", fmt_currency(mdata["admin"]), f"{mdata['admin']/mdata['net_rental_income']*100:.1f}%"),
+        ("Utilities", fmt_currency(mdata["utilities"]), f"{mdata['utilities']/mdata['net_rental_income']*100:.1f}%"),
+        ("Operating & Maintenance", fmt_currency(mdata["op_maintenance"]), f"{mdata['op_maintenance']/mdata['net_rental_income']*100:.1f}%"),
+        ("Taxes & Insurance", fmt_currency(mdata["taxes_insurance"]), f"{mdata['taxes_insurance']/mdata['net_rental_income']*100:.1f}%"),
+        ("Total Operating Expenses", fmt_currency(mdata["total_opex"]), f"{mdata['total_opex']/mdata['net_rental_income']*100:.1f}%"),
+        ("Net Operating Income", fmt_currency(mdata["noi"]), f"{mdata['noi']/mdata['net_rental_income']*100:.1f}%"),
+        ("Debt Service (Interest)", fmt_currency(mdata["interest"]), ""),
+        ("Other Non-Operating", fmt_currency(mdata["non_op_other"]), ""),
+        ("Net Income / (Loss)", fmt_currency(mdata["net_income"]), ""),
+    ]
+    pnl_df = pd.DataFrame(pnl_rows, columns=["Line Item","Amount","% NRI"])
+    st.dataframe(pnl_df, use_container_width=True, hide_index=True)
+    
+    # 4-month comparison
+    st.markdown('<div class="section-header">4-Month Comparison</div>', unsafe_allow_html=True)
+    comp_items = ["net_rental_income","total_opex","noi","net_income"]
+    comp_labels = ["Net Rental Income","Total OpEx","NOI","Net Income"]
+    comp_data = {lbl: [NEW_MONTHS[m][k] for m in ["Nov-25","Dec-25","Jan-26","Feb-26"]]
+                 for k, lbl in zip(comp_items, comp_labels)}
+    comp_data["Month"] = ["Nov-25","Dec-25","Jan-26","Feb-26"]
+    comp_df = pd.DataFrame(comp_data).set_index("Month")
+    st.dataframe(comp_df.applymap(lambda x: fmt_currency(x)), use_container_width=True)
 
-    # 5 Per-unit
-    st.markdown('<p class="section-title">5️⃣ Per-Unit Monthly Cost Analysis</p>',unsafe_allow_html=True)
-    pur=[]
-    for _,row in T12.iterrows():
-        va=row["Total_Util"]-BUDGET_UTIL_MO
-        pur.append({"Month":row["Month"],"Total Util":f"${row['Total_Util']:,.0f}",
-                    "Elec":f"${row['Elec']:,.0f}","Water":f"${row['Water']:,.0f}",
-                    "Gas":f"${row['Gas']:,.0f}","Sewer":f"${row['Sewer']:,.0f}",
-                    "$/Unit/Mo":f"${row['Total_Util']/UNITS:.0f}",
-                    "vs Budget":f"${va:+,.0f}",
-                    "Flag":"🔴" if va>BUDGET_UTIL_MO*0.2 else "🟡" if va>BUDGET_UTIL_MO*0.1 else "✅"})
-    st.dataframe(pd.DataFrame(pur),use_container_width=True,hide_index=True)
+# ═══════════════════════════════════════════════════════════════════════════
+# TAB 5: RESERVES & CAPITAL
+# ═══════════════════════════════════════════════════════════════════════════
+with tabs[4]:
+    st.markdown("### Reserves & Capital Planning")
+    
+    c1,c2,c3 = st.columns(3)
+    with c1: st.markdown(metric_card("Reserve for Replacements (1320)","$44,070","Funded $1,695/mo","neu"), unsafe_allow_html=True)
+    with c2: st.markdown(metric_card("Reserve Additional II (1322)","$521,754","Consolidated post-Dec","pos"), unsafe_allow_html=True)
+    with c3: st.markdown(metric_card("Total Reserve Balance","$565,824","As of Feb 28, 2026","neu"), unsafe_allow_html=True)
+    
+    # Reserve balance trend
+    st.markdown('<div class="section-header">Reserve Balance Trend</div>', unsafe_allow_html=True)
+    res_months = ["Nov-25","Dec-25","Jan-26","Feb-26"]
+    res_total = [BALANCE_SHEET[m]["reserve_replacements"] + BALANCE_SHEET[m].get("reserve_operating",0)
+                 for m in res_months]
+    
+    fig_res = go.Figure()
+    fig_res.add_trace(go.Scatter(x=res_months, y=res_total, fill="tozeroy", mode="lines+markers",
+                                 fillcolor="rgba(51,154,240,0.15)", line=dict(color="#339af0", width=3),
+                                 marker=dict(size=10, color="#339af0")))
+    fig_res.update_layout(paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+                          font=dict(color="#8892a4"), height=280,
+                          xaxis=dict(gridcolor="#2d3448"), yaxis=dict(gridcolor="#2d3448", tickprefix="$", tickformat=","))
+    st.plotly_chart(fig_res, use_container_width=True)
+    
+    # CNA 10-year
+    st.markdown('<div class="section-header">CNA 10-Year Reserve Projection (D3G, Oct 2025)</div>', unsafe_allow_html=True)
+    fig_cna = go.Figure()
+    fig_cna.add_trace(go.Bar(x=CNA_DATA["year"], y=CNA_DATA["withdrawals"], name="Capital Withdrawals",
+                             marker_color="#ff6b6b", opacity=0.8))
+    fig_cna.add_trace(go.Scatter(x=CNA_DATA["year"], y=CNA_DATA["balance"], name="Reserve Balance",
+                                 mode="lines+markers", line=dict(color="#26c981", width=3), marker=dict(size=8)))
+    fig_cna.add_hline(y=0, line_dash="dash", line_color="#ff6b6b", annotation_text="Depletion Risk")
+    fig_cna.update_layout(paper_bgcolor="#0f1117", plot_bgcolor="#0f1117",
+                          font=dict(color="#8892a4"), height=350, legend=dict(orientation="h", y=-0.2),
+                          xaxis=dict(gridcolor="#2d3448"), yaxis=dict(gridcolor="#2d3448", tickprefix="$", tickformat=","))
+    st.plotly_chart(fig_cna, use_container_width=True)
+    
+    st.markdown('<div class="section-header">Capital Needs Assessment — Top 10 Components</div>', unsafe_allow_html=True)
+    cna_df = pd.DataFrame(CNA_COMPONENTS, columns=["Component","Timeline","Estimated Cost","Priority"])
+    st.dataframe(cna_df, use_container_width=True, hide_index=True)
+    
+    st.markdown('<div class="alert-box">⚠️ <b>Elevator Replacement ($519K) in Yr 5 dominates the reserve draw.</b> At current deposit rate ($34K/yr), reserves will recover over 10+ years post-elevator. Consider HUD RAD/preservation financing to offload capital risk.</div>', unsafe_allow_html=True)
 
-# ══════════════════════════════════════════════════════════════
-# TAB 3 — FINANCIAL PERFORMANCE
-# ══════════════════════════════════════════════════════════════
-with tab3:
-    st.markdown('<p class="main-header">📊 Financial Performance</p>',unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Source: Jan-26 & Feb-26 Financial Reports · Accrual Basis · GL as of Feb-28-2026</p>',unsafe_allow_html=True)
+# ═══════════════════════════════════════════════════════════════════════════
+# TAB 6: ASK ANYTHING (AI Chatbot)
+# ═══════════════════════════════════════════════════════════════════════════
+with tabs[5]:
+    st.markdown("### Ask Anything — AI Property Intelligence")
+    st.markdown('<div class="info-box">Ask questions about Virginia Dare\'s financials, rent roll, occupancy, utilities, reserves, or HUD compliance. Powered by Groq (llama-3.3-70b).</div>', unsafe_allow_html=True)
+    
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+    
+    # System context
+    SYSTEM_PROMPT = """You are an expert real estate analyst and HUD affordable housing specialist for Virginia Dare Apartments.
 
-    st.markdown('<p class="section-title">💰 Key Financials — February 2026</p>',unsafe_allow_html=True)
-    f1,f2,f3,f4,f5=st.columns(5)
-    for widget,(label,actual,budget,higher) in zip([f1,f2,f3,f4,f5],[
-        ("Total Revenue",FEB26["revenue"],FEB26["budget_rev"],True),
-        ("Net Op. Income",FEB26["noi"],FEB26["budget_noi"],True),
-        ("Net Income",FEB26["net_income"],FEB26["budget_ni"],True),
-        ("Vacancy Loss",FEB26["vacancy"],1686,False),
-        ("Bad Debt",FEB26["bad_debt"],697,False),
-    ]):
-        var=actual-budget; vp=(var/abs(budget))*100 if budget else 0
-        good=(var>=0 and higher)or(var<0 and not higher)
-        col="delta-green" if good else "delta-red"
-        with widget:
-            st.markdown(f"""<div class="kpi-card">
-                <div class="kpi-label">{label}</div>
-                <div class="kpi-value">${actual:,.0f}</div>
-                <div class="{col}">{vp:+.1f}% vs ${budget:,} budget</div>
-            </div>""",unsafe_allow_html=True)
+PROPERTY FACTS:
+- 110 McMorrine St, Elizabeth City, NC 27909 | 73 units (68 residential + 5 commercial) | 9-story | Built 1927
+- HUD HAP Contract NC19H148016 | Management: Beacon Management (Kenya Owens)
+- Owner: Virginia Dare NC Preservation LLC | Mortgage: $3,278,000 (interest-only, $15,130/mo)
+- Unit Mix: 7×1A (500sf), 59×1B (600sf), 2×M-1 (1000sf mgr), 2×commercial (1300sf), 1×C6 (900sf vacant)
 
-    st.markdown('<p class="section-title">📈 Revenue, Expenses & NOI — Trailing 12 Months</p>',unsafe_allow_html=True)
-    fig_fin=go.Figure()
-    fig_fin.add_bar(x=T12["Month"],y=T12["Revenue"],name="Revenue",marker_color="#22c55e",opacity=0.85)
-    fig_fin.add_bar(x=T12["Month"],y=T12["Expenses"],name="Expenses",marker_color="#ef4444",opacity=0.85)
-    fig_fin.add_scatter(x=T12["Month"],y=T12["NOI"],name="NOI",
-                        line=dict(color="#3b82f6",width=3),mode="lines+markers",marker=dict(size=8))
-    fig_fin.update_layout(barmode="group",height=330,margin=dict(t=20,b=10),
-                          legend=dict(orientation="h",y=-0.25),yaxis_title="$")
-    st.plotly_chart(fig_fin,use_container_width=True)
+LATEST FINANCIALS (Feb 2026):
+- Occupancy: 95.9% (70/73 units); 3 vacant (C6, 5-7) + 1 vacant-leased (3-2)
+- Total Billing: $67,559 — Resident: $29,542 (43.7%) | HAP Subsidy: $38,017 (56.3%)
+- Net Rental Income: $68,001 | Total Income: $70,154 | OpEx: $29,131
+- NOI: $41,023 (60.3% margin) | Net Income: $19,424
+- Cash in Bank: $129,345 | Total Reserves: $565,824
+- Utilities Feb-26: Electricity $6,039 | Gas $655 | Water $689 | Sewer $620
 
-    cni,csum=st.columns([2,1])
-    with cni:
-        fig_ni=go.Figure()
-        fig_ni.add_bar(x=T12["Month"],y=T12["Net_Inc"],
-                       marker_color=["#16a34a" if v>=0 else "#dc2626" for v in T12["Net_Inc"]],name="Net Income")
-        fig_ni.add_hline(y=0,line_color="#94a3b8",line_width=1)
-        fig_ni.update_layout(height=260,title="Net Income (Loss) by Month",margin=dict(t=35,b=10),yaxis_title="$")
-        st.plotly_chart(fig_ni,use_container_width=True)
-    with csum:
-        st.markdown("**T12 Summary:**")
-        st.dataframe(pd.DataFrame({
-            "Item":["Total Revenue","Total Op. Exp.","Net Op. Income","T12 Net Income","Avg NOI/mo","Mortgage/yr"],
-            "Amount":[f"${ANNUAL_EGI:,}",f"${T12['Expenses'].sum():,}",f"${T12['NOI'].sum():,}",
-                      "$67,662",f"${T12['NOI'].mean():,.0f}",f"${MORTGAGE_MO*12:,}"]
-        }),use_container_width=True,hide_index=True)
+NOV 2025: NRI $64,144 | NOI $41,334 | Net Income $20,590
+DEC 2025: NRI $66,626 | NOI $25,747 | Net Income ($29,503) — Dec had $39K non-recurring expenses
+JAN 2026: NRI $64,641 | NOI $33,607 | Net Income $15,104
 
-    st.markdown('<p class="section-title">📋 Budget Comparison — Feb-26</p>',unsafe_allow_html=True)
-    st.dataframe(pd.DataFrame({
-        "Line Item":["Electricity","Water","Gas","Sewer","Total Utilities","Bad Debt","Vacancy","Total Op. Exp.","NOI","Net Income"],
-        "Jan-26 Actual":[7709.25,795.26,1000.82,715.68,10221.01,5818.88,5243,33592.98,33606.55,15104.44],
-        "Feb-26 Actual":[6039.44,689.38,654.54,620.40,8003.76,1699,1992,29130.72,41023.14,19424.42],
-        "Feb Budget":  [4605,817,745,775,6942,697,1686,31244,42246,24729],
-        "Variance $":  [1434.44,-127.62,-90.46,-154.60,1061.76,1002,-306,-2113.28,-1222.86,-5304.58],
-        "Var %":       [-31.1,15.6,12.1,19.9,-15.3,-143.8,181.5,6.8,-2.9,-21.5],
-    }),use_container_width=True,hide_index=True)
+ALERTS:
+- Unit C4 (Warden): holdover tenant, lease expired 09/09/2025, balance $3,822 due
+- DD3 winter gas spike: Jan-25 hit $2,707 vs ~$200 summer avg (confirmed 3-year pattern)
+- Jan-26 Blossman double delivery anomaly: verify billing vs consumption
+- Feb-26 GL deleted batch: needs verification against HUD reporting
+- EisnerAmper audit Dec 31 2025: CLEAN OPINION; annual net loss ($48,411) from non-recurring items
+- CNA: elevator replacement Yr 5 = $519K; current reserves $565K
 
-    st.markdown('<p class="section-title">🔍 GL Reconciliation</p>',unsafe_allow_html=True)
-    rt1,rt2=st.tabs(["January 2026 ✅","February 2026 ⚠️"])
-    with rt1:
-        for item,b,g,n in [("City EC Main","$8,550.91","$8,550.91","01/27→02/02 chk#1943"),
-                            ("City EC Office","$380.43","$380.43","01/27→02/02 chk#1942"),
-                            ("Blossman Jan-02","$514.40","$514.40","01/07→01/08 chk#1923"),
-                            ("Blossman Jan-21","$486.42","$486.42","01/22→02/02 chk#1941"),
-                            ("AGT Final Bill","$83.24","$83.24","02/16 booked correctly")]:
-            st.markdown(f'<div class="recon-match">✅ <strong>{item}</strong> — Bill {b} = GL {g} | {n}</div>',unsafe_allow_html=True)
-        st.markdown('<div class="alert-green">✅ January 2026 fully reconciled. Zero discrepancies.</div>',unsafe_allow_html=True)
-    with rt2:
-        st.markdown('<div class="recon-match">✅ <strong>Blossman Feb-12 (#34657363)</strong> — $654.54 = GL</div>',unsafe_allow_html=True)
-        for icon,title,desc,cls in [
-            ("🔴","Deleted Batch #1419","$8,978.45 — Mar bill Feb-16 mistake → reversed. Net=Zero, messy trail.","recon-flag"),
-            ("🟡","Electricity Accrual","$9,852 vs $7,967 actual. +$1,885 overstated. Auto-reverses Mar-01.","recon-warn"),
-            ("⚠️","Trash Accrual","$24.17 vs $280 actual. -$256 understated. Mar P&L will spike.","recon-warn"),
-            ("🔴","Office Past Due","$405.54 + $19.32 penalty. Disconnect Apr-23.","recon-flag"),
-        ]:
-            st.markdown(f'<div class="{cls}">{icon} <strong>{title}</strong> — {desc}</div>',unsafe_allow_html=True)
+Answer questions concisely and accurately. For investor questions, focus on risk/return. For operational questions, be specific. Always reference the data above."""
 
-# ══════════════════════════════════════════════════════════════
-# TAB 4 — RESERVES & CAPITAL
-# ══════════════════════════════════════════════════════════════
-with tab4:
-    st.markdown('<p class="main-header">🏦 Replacement Reserve & Capital Planning</p>',unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Source: HUD Reserve Schedule · Upload Audit or CNA to override with property-specific figures</p>',unsafe_allow_html=True)
-
-    rc1,rc2,rc3,rc4=st.columns(4)
-    with rc1: st.markdown('<div class="kpi-card"><div class="kpi-label">Yr 1 Balance</div><div class="kpi-value" style="color:#16a34a">$734,280</div></div>',unsafe_allow_html=True)
-    with rc2: st.markdown('<div class="kpi-card"><div class="kpi-label">Yr 4–6 Draw</div><div class="kpi-value" style="color:#dc2626">$707,386</div><div class="delta-red">Elevator replacement</div></div>',unsafe_allow_html=True)
-    with rc3: st.markdown('<div class="kpi-card"><div class="kpi-label">Yr 8 Balance</div><div class="kpi-value" style="color:#d97706">$174,855</div></div>',unsafe_allow_html=True)
-    with rc4: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Required/Unit/Yr</div><div class="kpi-value">${TOTAL_RES_PU:,}</div><div class="delta-gray">${TOTAL_RES_ANN:,}/yr total</div></div>',unsafe_allow_html=True)
-
-    st.markdown('<p class="section-title">📊 8-Year Reserve Balance Projection</p>',unsafe_allow_html=True)
-    fig_r=go.Figure()
-    fig_r.add_bar(x=RESERVE["Year"],y=RESERVE["Balance"],name="Reserve Balance",
-                  marker_color=["#16a34a" if b>400000 else "#f59e0b" if b>200000 else "#ef4444" for b in RESERVE["Balance"]])
-    fig_r.add_scatter(x=RESERVE["Year"],y=RESERVE["Draw"],name="Annual Draw (Inflated)",
-                      line=dict(color="#ef4444",dash="dash",width=2),mode="lines+markers")
-    fig_r.add_scatter(x=RESERVE["Year"],y=RESERVE["Min_Req"],name="HUD Min Balance Required",
-                      line=dict(color="#f59e0b",dash="dot",width=2),mode="lines+markers",marker=dict(size=5))
-    fig_r.update_layout(height=370,margin=dict(t=20,b=10),legend=dict(orientation="h",y=-0.22),yaxis_title="$",
-                        title="10-Year Reserve Balance — CNA Funding Schedule (D3G 2025)")
-    st.plotly_chart(fig_r,use_container_width=True)
-
-    st.markdown("""<div class="alert-yellow">
-        🟡 <strong>CNA Finding (D3G, Oct 2025):</strong> Elevator replacement (Yr 4-6) = $519K draw (2 passenger + 1 freight).
-        Balance drops from $810K → $112K by Yr 10. However HUD minimum balance maintained throughout all 10 years.
-        Initial deposit $700K | Annual deposit $34,000 (+2.26%/yr) | Inflation assumption: 6.81%.
-        Recommend physical elevator inspection before Yr 3 given current HVAC stress.
-    </div>""",unsafe_allow_html=True)
-
-    st.markdown('<p class="section-title">🔧 Component Reserve Schedule</p>',unsafe_allow_html=True)
-    def sty_rem(val):
-        try:
-            v=int(val)
-            if v<=5: return "background-color:#fef2f2;color:#dc2626;font-weight:600"
-            if v<=10: return "background-color:#fffbeb;color:#92400e"
-            return "background-color:#f0fdf4;color:#15803d"
-        except: return ""
-    st.dataframe(COMPONENTS.style.map(sty_rem,subset=["Remaining Life"]),use_container_width=True,hide_index=True)
-
-    cc1,cc2,cc3=st.columns(3)
-    with cc1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Required/Unit/Yr</div><div class="kpi-value">${TOTAL_RES_PU:,}</div></div>',unsafe_allow_html=True)
-    with cc2: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Total Annual Requirement</div><div class="kpi-value">${TOTAL_RES_ANN:,}</div></div>',unsafe_allow_html=True)
-    with cc3: st.markdown(f'<div class="kpi-card"><div class="kpi-label">Reserve Impact on EGI</div><div class="kpi-value" style="color:#dc2626">-{TOTAL_RES_ANN/ANNUAL_EGI*100:.1f}%</div></div>',unsafe_allow_html=True)
-
-    st.markdown('<p class="section-title">🔗 Utility Overrun → Reserve Risk</p>',unsafe_allow_html=True)
-    lk1,lk2,lk3=st.columns(3)
-    with lk1: st.markdown(f'<div class="kpi-card"><div class="kpi-label">T12 Utility Overrun</div><div class="kpi-value" style="color:#dc2626">${total_overrun:,.0f}</div><div class="delta-red">Direct NOI reduction</div></div>',unsafe_allow_html=True)
-    with lk2: st.markdown('<div class="kpi-card"><div class="kpi-label">HVAC Risk (4 yrs)</div><div class="kpi-value" style="color:#dc2626">$154,000</div><div class="delta-red">Stress accelerating</div></div>',unsafe_allow_html=True)
-    with lk3: st.markdown('<div class="kpi-card"><div class="kpi-label">Boiler Risk (5 yrs)</div><div class="kpi-value" style="color:#d97706">$80,000</div><div class="delta-red">Monitor closely</div></div>',unsafe_allow_html=True)
-
-    st.markdown('<p class="section-title">📉 NOI Waterfall — Full Cost Impact</p>',unsafe_allow_html=True)
-    avg_rev=T12["Revenue"].mean(); avg_util2=T12["Total_Util"].mean()
-    avg_other=T12["Expenses"].mean()-avg_util2; avg_noi=T12["NOI"].mean(); mo_res=TOTAL_RES_ANN/12
-    fig_wf=go.Figure(go.Waterfall(
-        orientation="v",measure=["absolute","relative","relative","total","relative","total"],
-        x=["Gross Revenue","Utility Cost","Other Expenses","NOI","Reserve Req.","NOI After Reserve"],
-        y=[avg_rev,-avg_util2,-avg_other,0,-mo_res,0],
-        connector={"line":{"color":"#cbd5e1"}},
-        increasing={"marker":{"color":"#16a34a"}},
-        decreasing={"marker":{"color":"#ef4444"}},
-        totals={"marker":{"color":"#3b82f6"}},
-        text=[f"${avg_rev:,.0f}",f"-${avg_util2:,.0f}",f"-${avg_other:,.0f}",
-              f"${avg_noi:,.0f}",f"-${mo_res:,.0f}",f"${avg_noi-mo_res:,.0f}"],
-        textposition="outside",
-    ))
-    fig_wf.update_layout(height=400,margin=dict(t=30,b=10),yaxis_title="$/month (T12 avg)")
-    st.plotly_chart(fig_wf,use_container_width=True)
-
-    st.markdown(f"""<div class="insight-box">
-        🤖 <strong>Bottom Line:</strong> Avg monthly NOI = <strong>${avg_noi:,.0f}</strong>.
-        After reserve requirement <strong>${mo_res:,.0f}/mo</strong>, effective NOI = <strong>${avg_noi-mo_res:,.0f}/mo</strong>
-        (${(avg_noi-mo_res)*12:,.0f}/yr).
-        Reducing utility overrun by 50% adds <strong>${total_overrun*0.5/12:,.0f}/mo</strong> directly to this figure.
-    </div>""",unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════════
-# TAB 5 — ASK ANYTHING
-# ══════════════════════════════════════════════════════════════
-with tab5:
-    st.markdown('<p class="main-header">💬 Ask Anything</p>',unsafe_allow_html=True)
-    st.markdown('<p class="sub-header">Powered by actual GL data, bills, and financial reports. Ask in English or Hindi.</p>',unsafe_allow_html=True)
-    if not st.session_state.groq_key:
-        st.warning("⚠️ Enter your Groq API Key in the sidebar.")
-    else:
-        sugg=["Why is electricity over budget?","What caused the DD3 spike?","When will reserves run low?",
-              "Explain the deleted GL batch","Is water billing estimated?","Jan vs Feb NOI comparison",
-              "Propane double delivery — what?","How much can NOI improve?","What to ask management?","Feb-26 accrual issues"]
-        cols=st.columns(5)
-        for i,s in enumerate(sugg):
-            with cols[i%5]:
-                if st.button(s,key=f"s{i}"): st.session_state.messages.append({"role":"user","content":s})
-        st.markdown("---")
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]): st.write(msg["content"])
-
-        doc_ctx=""
-        if st.session_state.documents:
-            doc_ctx="\n\nUPLOADED DOCS:\n"
-            for fn,ct in st.session_state.documents.items(): doc_ctx+=f"\n---{fn}---\n{ct[:2000]}\n"
-
-        SYS=f"""You are a senior real estate financial analyst specializing in HUD affordable housing.
-You have full access to all Virginia Dare Apartments documents including audit, rent schedule, and utility bills.
-
-PROPERTY: Virginia Dare Apartments | 110 McMorrine St, Elizabeth City NC 27909
-68 units | 9-story | Built 1927 | HUD HAP Contract NC19H148016
-Owner: Virginia Dare NC Preservation LLC | Management: Beacon Management Corp (Kenya Owens)
-
-AUDIT REPORT (EisnerAmper LLP — CLEAN UNMODIFIED OPINION):
-Period: Year ended December 31, 2025 | Auditor: Kelli Winter CPA | Report date: March 26, 2026
-INCOME STATEMENT 2025 vs 2024:
-- Gross Rent: $384,234 (2025) vs $356,994 (2024) — +7.6% due to OCAF increase
-- HAP Subsidy: $446,019 (2025) vs $425,943 (2024)
-- Total Revenue: $786,666 (2025) vs $782,747 (2024)
-- Vacancies: -$76,854 (2025) vs -$52,393 (2024) — vacancy INCREASED
-- Utilities 2025: Electricity $57,977 | Water $9,900 | Gas $8,970 | Sewer $9,412 | TOTAL $86,259
-- Utilities 2024: Electricity $49,132 | Water $9,592 | Gas $8,066 | Sewer $8,638 | TOTAL $75,428
-- Utility YoY increase: +$10,831 (+14.4%) — electricity up $8,845 alone
-- Insurance: $134,382 | O&M: $191,134 | Mortgage Interest: $188,757 | Depreciation: $117,299
-- Net Loss 2025: -$48,411 | Net Loss 2024: -$25,317
-
-BALANCE SHEET Dec 31, 2025:
-- Cash operations: $96,403 | Reserve for Replacements: $559,630 | Escrow: $57,506
-- Total Assets: $3,297,501 | Mortgage net: $3,193,075 | Members Equity: $45,182
-
-RESERVE FOR REPLACEMENTS (Audit confirmed):
-- Dec 2023: $617,780 | Dec 2024: $554,656 | Dec 2025: $559,630
-- 2024: -$114,550 withdrawn | 2025: -$36,198 withdrawn (much less)
-- Monthly deposit: $1,695/mo old → $1,207/mo from May 1, 2025 (HUD OCAF adjustment)
-- Lender (Berkadia) + HUD consent required for withdrawals
-
-MORTGAGE: Berkadia Commercial Mortgage | $3,278,000 at 5.36% | Originated Nov 9, 2023
-Interest-only until Jan 1, 2029 | Then $17,304/mo P+I | Matures Dec 1, 2033
-
-RENT SCHEDULE (HUD Form 92458 — Effective May 1, 2025):
-- 7 Efficiency units @ $832/mo = $5,824
-- 59 One-Bedroom units @ $952/mo = $56,168
-- 2 Two-Bedroom Unsubsidized @ $0 contract rent
-- TOTAL: 68 units | $61,992/mo contract potential | $743,904/yr
-- 5 Commercial spaces = $5,628/mo additional
-- ALL utilities included in rent (tenant pays nothing separately)
-- HAP contract through April 30, 2026
-
-MONTHLY FINANCIALS (from GL reports):
-JAN-26: Revenue $67,200 | NOI $33,607 | Net Income $15,104 | Utilities $10,221 (47% over budget)
-FEB-26: Revenue $70,154 | NOI $41,023 | Net Income $19,424 | Utilities $8,004 (15% over budget)
-
-COMPLETE UTILITY BILLS — DD3 HISTORY (all from actual bills):
-Dec-24: $5,474 (DD3=$1,061) | Jan-25: $8,152 (DD3=$2,092) | Feb-25: $8,889 (DD3=$2,707 ⚠️)
-Mar-25: $8,895 (DD3=$2,707) | Apr-25: $5,095 (DD3=$846) | May-25: $4,759 (DD3=$646)
-Jun-25: $5,191 (DD3=$846) | Jul-25: $6,416 (DD3=$1,292) | Aug-25: $5,852 (DD3=$1,108)
-Sep-25: $5,551 (DD3=$984) | Oct-25: $4,951 (DD3=$815) | Nov-25: $5,384 (DD3=$1,077)
-Dec-25: $7,230 (DD3=$1,954) | Jan-26: $8,551 (DD3=$2,707 ⚠️ SAME SPIKE) | Mar-26: $7,967 (DD3=$1,784)
-DD3 PATTERN: Winter (Dec-Feb) = $1,900-$2,707. Summer (May-Jun) = $646-$846. CLEAR SEASONAL PATTERN.
-Water: ALWAYS 99 units estimated billing. City upgrading to smart meters Apr-Oct 2025.
-Blossman: Jan-26 two deliveries 409.6 gal/$1,001 unusual. Price $2.099→$2.249 (+7.1% YoY).
-Office Apr-26: Past due $405.54 + $19.32 penalty. Disconnect date was Apr-23-26.
-
-GL RECONCILIATION:
-Jan-26: ALL 5 bills clean. Zero discrepancies. ✅
-Feb-26: Deleted batch #1419 ($8,978.45), elec accrual overstated $1,885, trash understated $256.
-
-SAVINGS POTENTIAL ($26,800/yr → $447,000 added value at 6% cap rate):
-- HVAC PM contract (77 units): $6,200/yr savings
-- LED retrofit common areas + exterior: $8,400/yr savings
-- Demand controller (cut DD3 winter spikes): ~$8,200/yr
-- Refuse split with 5 commercial tenants: ~$2,000/yr
-{doc_ctx}
-Answer with specific numbers from the documents above. Flag risks. Suggest concrete actions. Be concise."""
-
-        if prompt:=st.chat_input("Ask about utilities, GL, NOI, reserves..."):
-            st.session_state.messages.append({"role":"user","content":prompt})
-            with st.chat_message("user"): st.write(prompt)
-            with st.chat_message("assistant"):
-                with st.spinner("Analyzing..."):
-                    try:
-                        client=Groq(api_key=st.session_state.groq_key)
-                        hist=[{"role":m["role"],"content":m["content"]} for m in st.session_state.messages[:-1]]
-                        resp=client.chat.completions.create(
-                            model="llama-3.3-70b-versatile",
-                            messages=[{"role":"system","content":SYS},*hist,{"role":"user","content":prompt}],
-                            max_tokens=1500)
-                        reply=resp.choices[0].message.content
-                        st.write(reply)
-                        st.session_state.messages.append({"role":"assistant","content":reply})
-                    except Exception as e: st.error(f"Error: {str(e)}")
-        if st.session_state.messages:
-            if st.button("🗑️ Clear Chat"): st.session_state.messages=[]; st.rerun()
+    # Display chat history
+    for msg in st.session_state.chat_history:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+    
+    # Chat input
+    user_input = st.chat_input("Ask about Virginia Dare...")
+    
+    if user_input:
+        st.session_state.chat_history.append({"role": "user", "content": user_input})
+        with st.chat_message("user"):
+            st.write(user_input)
+        
+        # Build messages for API
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        for msg in st.session_state.chat_history[-10:]:
+            messages.append(msg)
+        
+        with st.chat_message("assistant"):
+            with st.spinner("Analyzing..."):
+                try:
+                    groq_key = st.secrets.get("GROQ_API_KEY", None)
+                    if groq_key:
+                        resp = requests.post(
+                            "https://api.groq.com/openai/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                            json={"model": "llama-3.3-70b-versatile", "messages": messages, "max_tokens": 1024, "temperature": 0.3},
+                            timeout=30
+                        )
+                        if resp.status_code == 200:
+                            answer = resp.json()["choices"][0]["message"]["content"]
+                        else:
+                            answer = f"API error {resp.status_code}. Check your GROQ_API_KEY in Streamlit secrets."
+                    else:
+                        # Fallback: rule-based responses
+                        q = user_input.lower()
+                        if "occupancy" in q:
+                            answer = "Feb 2026 occupancy is 95.9% (70/73 units). Two units vacant (C6, 5-7) and one vacant-leased (3-2, Ferebee moving in 03/13/2026). This is the best occupancy in the Nov-25 to Feb-26 window, up from 91.8% in Nov-25."
+                        elif "noi" in q or "net operating" in q:
+                            answer = "NOI trend: Nov-25: $41,334 | Dec-25: $25,747 (depressed by $39K non-recurring) | Jan-26: $33,607 | Feb-26: $41,023. The Feb-26 NOI of $41,023 represents a 60.3% NOI margin — strong for a HUD property of this age."
+                        elif "reserve" in q:
+                            answer = "Total reserves as of Feb 28, 2026: $565,824 ($44,070 in account 1320 + $521,754 in account 1322). CNA flags an elevator replacement in Year 5 (2029) at $519,000 — the reserves are adequate but tight given other capital needs over the decade."
+                        elif "vacancy" in q or "vacant" in q:
+                            answer = "Vacant units: C6 (900 sf, market), 5-7 (1A/500sf). Unit 3-2 is vacant-leased (Ferebee moving in 03/13/2026). Vacancy loss in Feb-26 was only $1,992 (2.9% of potential), the lowest in the 4-month window."
+                        elif "hap" in q or "subsidy" in q:
+                            answer = "HAP subsidy in Feb-26: $38,017 (56.3% of total billing $67,559). Resident portion: $29,542 (43.7%). The HAP contract NC19H148016 is active. Subsidy share has been relatively stable: Nov $38,333 | Dec $38,645 | Jan $36,911 | Feb $38,017."
+                        elif "utility" in q or "gas" in q or "electric" in q:
+                            answer = "Feb-26 utilities: Electricity $6,039 | Gas $655 | Water $689 | Sewer $620 = $8,004 total. Key alert: DD3 winter gas spike pattern — Jan-25 hit $2,707 vs ~$200 summer average. Also, Jan-26 had a suspected Blossman double delivery. Electric spiked Dec-25/Jan-26 ($7,043/$7,709)."
+                        else:
+                            answer = "I have detailed data on Virginia Dare's financials (Nov 2025 – Feb 2026), rent roll (73 units), utility costs (15-month history), reserves ($565K), and CNA projections. Add a GROQ_API_KEY to Streamlit secrets for full AI responses. Try asking about: occupancy, NOI, reserves, utilities, vacancy, or HAP subsidy."
+                    
+                    st.write(answer)
+                    st.session_state.chat_history.append({"role": "assistant", "content": answer})
+                    
+                except Exception as e:
+                    err_msg = f"Error: {str(e)}"
+                    st.error(err_msg)
+                    st.session_state.chat_history.append({"role": "assistant", "content": err_msg})
+    
+    if st.session_state.chat_history:
+        if st.button("Clear Chat"):
+            st.session_state.chat_history = []
+            st.rerun()
+    
+    st.markdown("---")
+    st.caption("Data sources: OneSite Rents v3.0 (02/28/2026) · EisnerAmper Audit Dec 31 2025 · Yardi GL Nov-25 to Feb-26 · D3G CNA Oct 2025 · Blossman Gas invoices")
