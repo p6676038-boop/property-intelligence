@@ -843,7 +843,94 @@ with tab3:
                                  title=f"Over-Budget Expenses — {month_sel}")
         st.plotly_chart(fig_wfall, use_container_width=True)
 
-    st.markdown('<p class="section-title">🔍 GL Reconciliation</p>',unsafe_allow_html=True)
+    # GL DRILL-DOWN for flagged expenses
+    st.markdown('<p class="section-title">🔬 GL Drill-Down — What\'s Behind Each Over-Budget Line</p>',unsafe_allow_html=True)
+    st.caption("Source: February 2026 General Ledger | Actual transactions extracted from GL report")
+
+    # GL transactions data — extracted from actual Feb-26 GL report
+    GL_DRILLDOWN = {
+        "6370 — Bad Debt ($1,699 vs $697 budget)": {
+            "verdict": "🔴 REAL EXPENSE — Not accrual timing",
+            "explanation": "Two actual tenant write-offs processed Feb-16. LOSTRENT $1,178 + LOSTOTHER $521 = $1,699. These are genuine bad debt entries — tenants who could not pay. Jan-26 also had $5,819 bad debt (4 write-offs). YTD bad debt = $7,518 vs $1,394 budget — 439% over. Investigate which units and whether HUD subsidy adjustments are current.",
+            "transactions": [
+                {"Date":"02/16/2026","Description":"LOSTRENT — Lost To Uncollectible (Rent)","Amount":"$1,178.00","Type":"Real write-off"},
+                {"Date":"02/16/2026","Description":"LOSTOTHER — Lost To Uncollectible (Other)","Amount":"$521.00","Type":"Real write-off"},
+            ]
+        },
+        "6450 — Electricity ($6,039 vs $4,605 budget)": {
+            "verdict": "🟡 ACCRUAL TIMING — Not a real Feb overspend",
+            "explanation": "Feb-26 electricity = $9,851.95 accrual MINUS $3,877.20 prior month reversal + $64.69 AGT account = net $6,039. The accrual ($9,852) was based on Jan-26 high bill. Actual Mar-26 bill = $7,967 — so accrual overstated by ~$1,885. Real electricity spend is tracking to Mar bill. Deleted batch #1419 ($7,149.75) also created noise but was fully reversed Feb-28.",
+            "transactions": [
+                {"Date":"02/01/2026","Description":"Reversed prior accrual (Dec-25)","Amount":"-$3,877.20","Type":"Accrual reversal"},
+                {"Date":"02/16/2026","Description":"Deleted Batch #1419 — entered then reversed","Amount":"$7,149.75 → $0","Type":"⚠️ Error entry (net zero)"},
+                {"Date":"02/16/2026","Description":"City of EC — AGT account final bill","Amount":"$64.69","Type":"Actual bill"},
+                {"Date":"02/28/2026","Description":"Feb-26 utility accrual (estimated)","Amount":"$9,851.95","Type":"Accrual (overestimated)"},
+            ]
+        },
+        "6530 — Security ($519 vs $106 budget)": {
+            "verdict": "🔴 REAL EXPENSE — Capital equipment replacement",
+            "explanation": "Three invoices from Down East Protection Systems. $49.90 security service + $49.90 monitoring — these are normal recurring. But $419.23 for 'Replace Hard Drive' is a one-time capital item incorrectly coded to operating security expense. Should be in 7100 (Other/Non-Recurring) or capitalized. Flag to management for reclassification.",
+            "transactions": [
+                {"Date":"02/16/2026","Description":"Down East Protection: Security Service Jan","Amount":"$49.90","Type":"Normal recurring"},
+                {"Date":"02/16/2026","Description":"Down East Protection: Monitoring Service Feb","Amount":"$49.90","Type":"Normal recurring"},
+                {"Date":"02/16/2026","Description":"Down East Protection: Replace Hard Drive","Amount":"$419.23","Type":"⚠️ One-time — possible miscoding"},
+            ]
+        },
+        "7100 — Other/Non-Recurring ($5,841 vs $1,707 budget)": {
+            "verdict": "🔴 REAL EXPENSES — Multiple unit repairs + one large plumbing job",
+            "explanation": "13 transactions totaling $5,841. Major items: Dickson Plumbing replace toilet Apt 3-1 ($2,178), VSC Fire & Security repair fire pump leak ($897), HD Supply range replacement ($868), Rick's Home Service wall repair Apt 5-2 ($470) + deep clean Apt 7-6 ($500). These are all legitimate repair costs but significantly above budget. The $2,178 toilet replacement in particular is unusually expensive — verify scope.",
+            "transactions": [
+                {"Date":"02/16/2026","Description":"Dickson Plumbing — Replace toilet Apt 3-1","Amount":"$2,178.23","Type":"🔴 High — verify scope"},
+                {"Date":"02/16/2026","Description":"VSC Fire & Security — Repair fire pump leak","Amount":"$896.54","Type":"Safety item"},
+                {"Date":"02/16/2026","Description":"HD Supply — Range replacement","Amount":"$868.33","Type":"Unit appliance"},
+                {"Date":"02/05/2026","Description":"Rick's Home Service — Wall repair Apt 5-2","Amount":"$470.00","Type":"Unit repair"},
+                {"Date":"02/01/2026","Description":"Rick's Home Service — Deep clean Apt 7-6","Amount":"$500.00","Type":"Turnover cost"},
+                {"Date":"02/04/2026","Description":"Rick's Home Service — HVAC repair Apt M-1","Amount":"$305.00","Type":"HVAC repair"},
+                {"Date":"02/04/2026","Description":"Lowe's Pro Supply — Refrigerator Apt 7-6","Amount":"$357.76","Type":"Unit appliance"},
+                {"Date":"02/11/2026","Description":"Dickson Plumbing — Unclog toilet Apt 3-4","Amount":"$165.00","Type":"Normal repair"},
+                {"Date":"02/23/2026","Description":"Mr Snowden's Pest Control — Roach clean out","Amount":"$45.00","Type":"Normal recurring"},
+                {"Date":"02/23/2026","Description":"Rick's Home Service — Bulk trash removal Apt 3-2","Amount":"$400.00","Type":"Turnover cost"},
+            ]
+        },
+        "6311 — Office Expenses ($1,160 vs $1,028 budget)": {
+            "verdict": "🟡 REAL EXPENSE — Brightspeed late fee driving overage",
+            "explanation": "Most items normal: Realpage software $140, ODP supplies $138, copier lease $103. Issue: Brightspeed internet $390.97 + $42 late fee + two $55 manual adjustments = $543 total for internet. $42 late fee is avoidable — management should ensure timely payment. Also note the 'S/B DISCOUNT' adjustments suggest a billing dispute was not resolved properly.",
+            "transactions": [
+                {"Date":"02/11/2026","Description":"Brightspeed — Internet service Jan-Feb","Amount":"$390.97","Type":"Normal"},
+                {"Date":"02/11/2026","Description":"Brightspeed — Late fee","Amount":"$42.00","Type":"⚠️ Avoidable — late payment"},
+                {"Date":"02/13/2026","Description":"Brightspeed — Manual adjustments (x2)","Amount":"$110.00","Type":"⚠️ Billing dispute"},
+                {"Date":"02/16/2026","Description":"Toshiba — Copier lease","Amount":"$103.38","Type":"Normal"},
+                {"Date":"02/03/2026","Description":"Realpage — Monthly software service","Amount":"$139.86","Type":"Normal"},
+            ]
+        },
+        "6525 — Garbage & Trash ($296 vs $280 budget)": {
+            "verdict": "🟡 ACCRUAL ISSUE — Actual charge correct, accrual understated",
+            "explanation": "Feb-26 actual = $295.62 (only $15.62 over budget — fine). BUT the Feb accrual was only $24.17 vs actual $280 office refuse charge. This means the accrual methodology is broken for this account. Mar-26 will show a spike when the real bill is booked. Also note $406.45 manual entry 'GARBAGE AND TRASH' on Feb-28 — verify this is not a duplicate.",
+            "transactions": [
+                {"Date":"02/01/2026","Description":"Reversed prior accrual","Amount":"-$153.55","Type":"Accrual reversal"},
+                {"Date":"02/16/2026","Description":"City of EC — Office refuse charge","Amount":"$18.55","Type":"Actual bill (AGT)"},
+                {"Date":"02/28/2026","Description":"Feb-26 garbage accrual (understated)","Amount":"$24.17","Type":"⚠️ Accrual too low"},
+                {"Date":"02/28/2026","Description":"Manual entry — GARBAGE AND TRASH","Amount":"$406.45","Type":"⚠️ Verify not duplicate"},
+            ]
+        },
+    }
+
+    selected_acct = st.selectbox(
+        "Select flagged account to drill down:",
+        list(GL_DRILLDOWN.keys()),
+        key="gl_drill"
+    )
+
+    if selected_acct in GL_DRILLDOWN:
+        drill = GL_DRILLDOWN[selected_acct]
+        verdict_color = "alert-red" if "🔴" in drill["verdict"] else "alert-yellow"
+        st.markdown(f'<div class="{verdict_color}"><strong>{drill["verdict"]}</strong><br>{drill["explanation"]}</div>', unsafe_allow_html=True)
+
+        st.markdown("**GL Transactions:**")
+        txn_df = pd.DataFrame(drill["transactions"])
+        st.dataframe(txn_df, use_container_width=True, hide_index=True)
+
+
     rt1,rt2=st.tabs(["January 2026 ✅","February 2026 ⚠️"])
     with rt1:
         for item,b,g,n in [("City EC Main","$8,550.91","$8,550.91","01/27→02/02 chk#1943"),
@@ -1032,6 +1119,53 @@ SAVINGS POTENTIAL ($26,800/yr → $447,000 added value at 6% cap rate):
 - LED retrofit common areas + exterior: $8,400/yr savings
 - Demand controller (cut DD3 winter spikes): ~$8,200/yr
 - Refuse split with 5 commercial tenants: ~$2,000/yr
+
+FULL LINE-ITEM BUDGET ANALYSIS (Jan-26 & Feb-26 from actual GL):
+FORMAT: Line Item | Jan Actual vs Budget (Variance) | Feb Actual vs Budget (Variance) | Flag
+
+INCOME:
+- Gross Rent: Jan $31,659 vs $69,702 | Feb $31,659 vs $69,702 [Note: HAP subsidy separate in 5121]
+- Tenant Assistance HAP: Jan $36,570 | Feb $38,334 [not budgeted separately]
+- Vacancies: Jan -$5,243 vs -$1,686 (HIGH) | Feb -$1,992 vs -$1,686 ✅
+- Laundry: Jan $307 vs $303 ✅ | Feb $188 vs $303 🟡
+
+PAYROLL:
+- Maintenance Payroll (6510): Jan $3,865 vs $3,840 (+$25) ✅ | Feb $3,664 vs $3,840 ✅
+
+ADMINISTRATIVE:
+- Other Renting (6250): Jan -$2,793 vs $85 (credit/reversal) | Feb $125 vs $85 (+$40) ✅
+- Office Expenses (6311): Jan $649 vs $1,028 ✅ | Feb $1,160 vs $1,028 (+$132 🟡) — Brightspeed late fee $42 avoidable
+- Management Fees (6320): Jan $2,622 vs $2,721 ✅ | Feb $2,510 vs $2,721 ✅
+- Manager Salaries (6330): Jan $2,757 vs $3,200 ✅ | Feb $3,000 vs $3,200 ✅
+- Bad Debt (6370): Jan $5,819 vs $697 (+$5,122 🔴) | Feb $1,699 vs $697 (+$1,002 🔴) — REAL write-offs, not accrual
+
+UTILITIES:
+- Electricity (6450): Jan $7,709 vs $4,605 (+$3,104 🔴 -67%) | Feb $6,039 vs $4,605 (+$1,434 🔴 -31%) — ACCRUAL TIMING mostly
+- Water (6451): Jan $795 vs $817 ✅ | Feb $689 vs $817 ✅
+- Gas (6452): Jan $1,001 vs $745 (+$256 🟡) | Feb $655 vs $745 ✅
+- Sewer (6453): Jan $716 vs $775 ✅ | Feb $620 vs $775 ✅
+
+OPERATING & MAINTENANCE:
+- Supplies (6515): Jan $53 vs $732 (under) | Feb -$183 vs $732 (credit/reversal)
+- Contracts (6520): Jan $3,668 vs $3,843 ✅ | Feb $1,325 vs $3,843 (under — timing)
+- Trash/Garbage (6525): Jan $275 vs $280 ✅ | Feb $296 vs $280 (+$16 🟡) — small over; accrual only $24 (understated!)
+- Security (6530): Jan $0 vs $106 | Feb $519 vs $106 (+$413 🔴) — Down East: $419 hard drive replacement possibly miscoded
+
+TAXES & INSURANCE:
+- Payroll Taxes (6711): Jan $529 vs $607 ✅ | Feb $532 vs $607 ✅
+- Insurance (6720): Jan $4,553 vs $4,553 ✅ | Feb $4,553 vs $4,553 ✅ — exactly on budget
+- Health Benefits (6723): Jan $1,219 vs $1,795 ✅ | Feb $1,846 vs $1,795 (+$51) ✅
+
+NON-OPERATING:
+- Mortgage Interest (6820): Jan $15,130 vs $15,130 ✅ | Feb $15,130 vs $15,130 ✅ — perfectly on budget
+- Other/Non-Recurring (7100): Jan $2,377 vs $1,707 (+$670 🔴) | Feb $5,841 vs $1,707 (+$4,134 🔴) — REAL REPAIRS:
+  Feb breakdown: Dickson Plumbing toilet Apt 3-1 $2,178 + VSC fire pump $897 + HD Supply range $868 + Rick's wall repair $470 + deep clean $500 + HVAC repair $305 + Lowe's fridge $358 + plumbing $165 + pest control $45 + bulk trash $400
+- Partnership Mgmt Fee (7140): Jan $340 vs $0 (unbudgeted) | Feb $0
+- Incentive Mgmt Fee (7190): Jan $655 vs $680 ✅ | Feb $628 vs $680 ✅
+
+KEY INSIGHT FOR CHATBOT: When asked which expenses are over budget:
+TOP 3 OVER-BUDGET (Feb-26): 1) Bad Debt $1,699 (+144% REAL write-offs) 2) Electricity $6,039 (+31% ACCRUAL) 3) Other/Non-Recurring $5,841 (+242% REAL repairs)
+TOP 3 OVER-BUDGET (Jan-26): 1) Bad Debt $5,819 (+735% REAL) 2) Electricity $7,709 (+67% ACCRUAL) 3) Other/Non-Recurring $2,377 (+39% REAL)
 {doc_ctx}
 Answer with specific numbers from the documents above. Flag risks. Suggest concrete actions. Be concise."""
 
