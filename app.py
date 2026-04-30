@@ -607,7 +607,7 @@ with tab2:
     ll1,ll2=st.columns(2)
     with ll1:
         st.markdown("**⚠️ High-Risk Components (≤5 yrs remaining):**")
-        hr=COMPONENTS[COMPONENTS["Remaining Life (yrs)"]<=5][["Component","Remaining Life","Total Replacement $","Reserve/Unit/Yr"]]
+        hr=COMPONENTS[COMPONENTS["Remaining Life (yrs)"]<=5][["Component","Remaining Life (yrs)","Total Replacement $","Reserve/Unit/Yr"]]
         st.dataframe(hr,use_container_width=True,hide_index=True)
     with ll2:
         avg_util=T12["Total_Util"].mean(); mo_res=TOTAL_RES_ANN/12
