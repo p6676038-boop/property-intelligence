@@ -1167,7 +1167,15 @@ KEY INSIGHT FOR CHATBOT: When asked which expenses are over budget:
 TOP 3 OVER-BUDGET (Feb-26): 1) Bad Debt $1,699 (+144% REAL write-offs) 2) Electricity $6,039 (+31% ACCRUAL) 3) Other/Non-Recurring $5,841 (+242% REAL repairs)
 TOP 3 OVER-BUDGET (Jan-26): 1) Bad Debt $5,819 (+735% REAL) 2) Electricity $7,709 (+67% ACCRUAL) 3) Other/Non-Recurring $2,377 (+39% REAL)
 {doc_ctx}
-Answer with specific numbers from the documents above. Flag risks. Suggest concrete actions. Be concise."""
+Answer with specific numbers from the documents above. Flag risks. Suggest concrete actions. Be concise.
+FORMATTING RULES — STRICTLY FOLLOW:
+- Always use $ sign before numbers: write $1,699 not 1,699
+- Never use LaTeX or math notation like $...$ or \\( \\)
+- Use simple bullet points with - or numbers
+- For tables use plain text with | separator
+- Keep responses clean and readable, no special symbols
+- Example good format: "Bad Debt: $1,699 actual vs $697 budget = +$1,002 over (144%)"
+- Example bad format: "Bad Debt: 1,699|Feb697 (+1002)" — NEVER do this"""
 
         if prompt:=st.chat_input("Ask about utilities, GL, NOI, reserves..."):
             st.session_state.messages.append({"role":"user","content":prompt})
@@ -1182,7 +1190,11 @@ Answer with specific numbers from the documents above. Flag risks. Suggest concr
                             messages=[{"role":"system","content":SYS},*hist,{"role":"user","content":prompt}],
                             max_tokens=1500)
                         reply=resp.choices[0].message.content
-                        st.write(reply)
+                        # Clean up common formatting issues
+                        import re
+                        reply = re.sub(r'\$([^$\s]+)\$', r'\1', reply)  # remove math $...$
+                        reply = re.sub(r'\*\*([^*]+)\*\*', r'**\1**', reply)  # keep bold
+                        st.markdown(reply)
                         st.session_state.messages.append({"role":"assistant","content":reply})
                     except Exception as e: st.error(f"Error: {str(e)}")
         if st.session_state.messages:
