@@ -219,6 +219,67 @@ COMPONENTS["Annual Total"] = COMPONENTS["Reserve/Unit/Yr"]*UNITS
 TOTAL_RES_PU  = int(COMPONENTS["Reserve/Unit/Yr"].sum())
 TOTAL_RES_ANN = int(COMPONENTS["Annual Total"].sum())
 
+# COMPLETE LINE-ITEM BUDGET COMPARISON — from actual GL reports Jan-26 & Feb-26
+BUDGET_LINES = pd.DataFrame([
+    {"Category":"Income","Account":"5120","Line Item":"Gross Tenant Rent Potential","Jan_Act":31659,"Jan_Bud":69702,"Feb_Act":31659,"Feb_Bud":69702,"Type":"income"},
+    {"Category":"Income","Account":"5121","Line Item":"Tenant Assistance (HAP)","Jan_Act":36570,"Jan_Bud":0,"Feb_Act":38334,"Feb_Bud":0,"Type":"income"},
+    {"Category":"Income","Account":"5220","Line Item":"Vacancies - Apartments","Jan_Act":-5243,"Jan_Bud":-1686,"Feb_Act":-1992,"Feb_Bud":-1686,"Type":"income"},
+    {"Category":"Income","Account":"5410","Line Item":"Financial Revenue - Operations","Jan_Act":20.48,"Jan_Bud":29,"Feb_Act":9.87,"Feb_Bud":29,"Type":"income"},
+    {"Category":"Income","Account":"5440","Line Item":"Revenue - Replacement Reserve","Jan_Act":1489.48,"Jan_Bud":0,"Feb_Act":1314.47,"Feb_Bud":0,"Type":"income"},
+    {"Category":"Income","Account":"5910","Line Item":"Laundry & Vending","Jan_Act":307.44,"Jan_Bud":303,"Feb_Act":187.52,"Feb_Bud":303,"Type":"income"},
+    {"Category":"Income","Account":"5920","Line Item":"Tenant Charges","Jan_Act":486,"Jan_Bud":1242,"Feb_Act":641,"Feb_Bud":0,"Type":"income"},
+    {"Category":"Payroll","Account":"6510","Line Item":"Maintenance Payroll","Jan_Act":3865,"Jan_Bud":3840,"Feb_Act":3664.08,"Feb_Bud":3840,"Type":"expense"},
+    {"Category":"Administrative","Account":"6250","Line Item":"Other Renting Expenses","Jan_Act":-2792.70,"Jan_Bud":85,"Feb_Act":125,"Feb_Bud":85,"Type":"expense"},
+    {"Category":"Administrative","Account":"6311","Line Item":"Office Expenses","Jan_Act":648.63,"Jan_Bud":1028,"Feb_Act":1159.54,"Feb_Bud":1028,"Type":"expense"},
+    {"Category":"Administrative","Account":"6320","Line Item":"Management Fees","Jan_Act":2621.60,"Jan_Bud":2721,"Feb_Act":2510.44,"Feb_Bud":2721,"Type":"expense"},
+    {"Category":"Administrative","Account":"6330","Line Item":"Manager Salaries","Jan_Act":2757.04,"Jan_Bud":3200,"Feb_Act":3000,"Feb_Bud":3200,"Type":"expense"},
+    {"Category":"Administrative","Account":"6340","Line Item":"Legal","Jan_Act":96.25,"Jan_Bud":0,"Feb_Act":0,"Feb_Bud":0,"Type":"expense"},
+    {"Category":"Administrative","Account":"6370","Line Item":"Bad Debt","Jan_Act":5818.88,"Jan_Bud":697,"Feb_Act":1699,"Feb_Bud":697,"Type":"expense"},
+    {"Category":"Administrative","Account":"6390","Line Item":"Misc Administrative","Jan_Act":-20,"Jan_Bud":0,"Feb_Act":0,"Feb_Bud":0,"Type":"expense"},
+    {"Category":"Utilities","Account":"6450","Line Item":"Electricity","Jan_Act":7709.25,"Jan_Bud":4605,"Feb_Act":6039.44,"Feb_Bud":4605,"Type":"expense"},
+    {"Category":"Utilities","Account":"6451","Line Item":"Water","Jan_Act":795.26,"Jan_Bud":817,"Feb_Act":689.38,"Feb_Bud":817,"Type":"expense"},
+    {"Category":"Utilities","Account":"6452","Line Item":"Gas","Jan_Act":1000.82,"Jan_Bud":745,"Feb_Act":654.54,"Feb_Bud":745,"Type":"expense"},
+    {"Category":"Utilities","Account":"6453","Line Item":"Sewer","Jan_Act":715.68,"Jan_Bud":775,"Feb_Act":620.40,"Feb_Bud":775,"Type":"expense"},
+    {"Category":"Operating & Maint.","Account":"6515","Line Item":"Supplies","Jan_Act":53.16,"Jan_Bud":732,"Feb_Act":-182.51,"Feb_Bud":732,"Type":"expense"},
+    {"Category":"Operating & Maint.","Account":"6520","Line Item":"Contracts","Jan_Act":3667.70,"Jan_Bud":3843,"Feb_Act":1325,"Feb_Bud":3843,"Type":"expense"},
+    {"Category":"Operating & Maint.","Account":"6525","Line Item":"Garbage & Trash Removal","Jan_Act":274.88,"Jan_Bud":280,"Feb_Act":295.62,"Feb_Bud":280,"Type":"expense"},
+    {"Category":"Operating & Maint.","Account":"6530","Line Item":"Security Payroll/Contracts","Jan_Act":0,"Jan_Bud":106,"Feb_Act":519.03,"Feb_Bud":106,"Type":"expense"},
+    {"Category":"Taxes & Insurance","Account":"6711","Line Item":"Payroll Taxes","Jan_Act":528.62,"Jan_Bud":607,"Feb_Act":532.29,"Feb_Bud":607,"Type":"expense"},
+    {"Category":"Taxes & Insurance","Account":"6720","Line Item":"Property & Liability Insurance","Jan_Act":4553.02,"Jan_Bud":4553,"Feb_Act":4553.02,"Feb_Bud":4553,"Type":"expense"},
+    {"Category":"Taxes & Insurance","Account":"6722","Line Item":"Workmens Compensation","Jan_Act":80.67,"Jan_Bud":78,"Feb_Act":80.67,"Feb_Bud":78,"Type":"expense"},
+    {"Category":"Taxes & Insurance","Account":"6723","Line Item":"Health Insurance & Benefits","Jan_Act":1219.22,"Jan_Bud":1795,"Feb_Act":1845.78,"Feb_Bud":1795,"Type":"expense"},
+    {"Category":"Taxes & Insurance","Account":"6790","Line Item":"Misc Taxes, Licenses & Permits","Jan_Act":0,"Jan_Bud":237,"Feb_Act":0,"Feb_Bud":237,"Type":"expense"},
+    {"Category":"Non-Operating","Account":"6820","Line Item":"Interest - First Mortgage","Jan_Act":15129.79,"Jan_Bud":15130,"Feb_Act":15129.79,"Feb_Bud":15130,"Type":"expense"},
+    {"Category":"Non-Operating","Account":"7100","Line Item":"Other/Non-Recurring Expenses","Jan_Act":2376.92,"Jan_Bud":1707,"Feb_Act":5841.32,"Feb_Bud":1707,"Type":"expense"},
+    {"Category":"Non-Operating","Account":"7140","Line Item":"Partnership Management Fee","Jan_Act":340,"Jan_Bud":0,"Feb_Act":0,"Feb_Bud":0,"Type":"expense"},
+    {"Category":"Non-Operating","Account":"7190","Line Item":"Incentive Performance Mgmt Fee","Jan_Act":655.40,"Jan_Bud":680,"Feb_Act":627.61,"Feb_Bud":680,"Type":"expense"},
+])
+BUDGET_LINES["Jan_Var"]     = BUDGET_LINES["Jan_Act"] - BUDGET_LINES["Jan_Bud"]
+BUDGET_LINES["Feb_Var"]     = BUDGET_LINES["Feb_Act"] - BUDGET_LINES["Feb_Bud"]
+BUDGET_LINES["Jan_Var_Pct"] = ((BUDGET_LINES["Jan_Var"] / BUDGET_LINES["Jan_Bud"].replace(0,1)) * 100).round(1)
+BUDGET_LINES["Feb_Var_Pct"] = ((BUDGET_LINES["Feb_Var"] / BUDGET_LINES["Feb_Bud"].replace(0,1)) * 100).round(1)
+
+def flag_line(row, month="Feb"):
+    act=row[f"{month}_Act"]; bud=row[f"{month}_Bud"]
+    var=row[f"{month}_Var"]; var_pct=row[f"{month}_Var_Pct"]
+    is_expense = row["Type"]=="expense"
+    if is_expense:
+        if row["Account"]=="6525":  # Trash — flag >$100
+            if var>100: return "🔴 Over $100"
+            elif var>0: return "🟡 Slightly Over"
+            else: return "✅ Under"
+        if var_pct>50 or var>2000: return "🔴 Critical"
+        if var_pct>20 or var>500:  return "🟡 Over Budget"
+        if var_pct<-20:            return "🟢 Under Budget"
+        return "✅ On Track"
+    else:
+        if var_pct<-20 and bud>0: return "🔴 Under Budget"
+        if var_pct<-10 and bud>0: return "🟡 Watch"
+        return "✅ OK"
+
+BUDGET_LINES["Feb_Flag"] = BUDGET_LINES.apply(lambda r: flag_line(r,"Feb"), axis=1)
+BUDGET_LINES["Jan_Flag"] = BUDGET_LINES.apply(lambda r: flag_line(r,"Jan"), axis=1)
+
 # ── SIDEBAR ──
 with st.sidebar:
     st.markdown("### 🏢 Property Intelligence")
@@ -692,15 +753,95 @@ with tab3:
                       "$67,662",f"${T12['NOI'].mean():,.0f}",f"${MORTGAGE_MO*12:,}"]
         }),use_container_width=True,hide_index=True)
 
-    st.markdown('<p class="section-title">📋 Budget Comparison — Feb-26</p>',unsafe_allow_html=True)
-    st.dataframe(pd.DataFrame({
-        "Line Item":["Electricity","Water","Gas","Sewer","Total Utilities","Bad Debt","Vacancy","Total Op. Exp.","NOI","Net Income"],
-        "Jan-26 Actual":[7709.25,795.26,1000.82,715.68,10221.01,5818.88,5243,33592.98,33606.55,15104.44],
-        "Feb-26 Actual":[6039.44,689.38,654.54,620.40,8003.76,1699,1992,29130.72,41023.14,19424.42],
-        "Feb Budget":  [4605,817,745,775,6942,697,1686,31244,42246,24729],
-        "Variance $":  [1434.44,-127.62,-90.46,-154.60,1061.76,1002,-306,-2113.28,-1222.86,-5304.58],
-        "Var %":       [-31.1,15.6,12.1,19.9,-15.3,-143.8,181.5,6.8,-2.9,-21.5],
-    }),use_container_width=True,hide_index=True)
+    st.markdown('<p class="section-title">📋 Full Line-Item Budget Analysis — Jan & Feb 2026</p>',unsafe_allow_html=True)
+
+    # Filter controls
+    fc1,fc2,fc3 = st.columns(3)
+    with fc1:
+        month_sel = st.selectbox("Month",["February 2026","January 2026"],key="bud_month")
+    with fc2:
+        cat_sel = st.selectbox("Category",["All Categories","Income","Payroll","Administrative",
+                                            "Utilities","Operating & Maint.","Taxes & Insurance","Non-Operating"],key="bud_cat")
+    with fc3:
+        flag_sel = st.selectbox("Show",["All","Flagged Only (🔴🟡)","Over Budget Only"],key="bud_flag")
+
+    mo = "Feb" if "February" in month_sel else "Jan"
+    df_show = BUDGET_LINES.copy()
+    if cat_sel != "All Categories":
+        df_show = df_show[df_show["Category"]==cat_sel]
+    if flag_sel == "Flagged Only (🔴🟡)":
+        df_show = df_show[df_show[f"{mo}_Flag"].str.contains("🔴|🟡")]
+    elif flag_sel == "Over Budget Only":
+        df_show = df_show[(df_show[f"{mo}_Var"]>0) & (df_show["Type"]=="expense")]
+
+    # Build display table
+    display_rows = []
+    for _, row in df_show.iterrows():
+        act = row[f"{mo}_Act"]; bud = row[f"{mo}_Bud"]
+        var = row[f"{mo}_Var"]; var_pct = row[f"{mo}_Var_Pct"]
+        flag = row[f"{mo}_Flag"]
+        display_rows.append({
+            "Cat": row["Category"],
+            "Account": row["Account"],
+            "Line Item": row["Line Item"],
+            "Actual": f"${act:,.2f}",
+            "Budget": f"${bud:,.2f}" if bud != 0 else "—",
+            "Variance $": f"${var:+,.2f}",
+            "Var %": f"{var_pct:+.1f}%" if bud != 0 else "N/A",
+            "Flag": flag,
+        })
+    df_disp = pd.DataFrame(display_rows)
+
+    def color_flag_cell(val):
+        if "🔴" in str(val): return "background-color:#fef2f2;color:#dc2626;font-weight:600"
+        if "🟡" in str(val): return "background-color:#fffbeb;color:#92400e"
+        if "🟢" in str(val): return "background-color:#f0fdf4;color:#15803d"
+        return ""
+    def color_var(val):
+        try:
+            v = float(str(val).replace("$","").replace(",","").replace("%","").replace("+",""))
+            if "+" in str(val) and "$" in str(val):
+                return "color:#dc2626;font-weight:600" if v>100 else "color:#dc2626"
+        except: pass
+        return ""
+
+    st.dataframe(df_disp.style
+                 .map(color_flag_cell, subset=["Flag"])
+                 .map(color_var, subset=["Variance $"]),
+                 use_container_width=True, hide_index=True, height=420)
+
+    # Summary flags box
+    critical = BUDGET_LINES[BUDGET_LINES[f"{mo}_Flag"].str.contains("🔴")]
+    warning  = BUDGET_LINES[BUDGET_LINES[f"{mo}_Flag"].str.contains("🟡")]
+
+    if not critical.empty or not warning.empty:
+        st.markdown(f"**{month_sel} — {len(critical)} Critical Flags, {len(warning)} Warnings:**")
+        for _, row in critical.iterrows():
+            var = row[f"{mo}_Var"]; var_pct = row[f"{mo}_Var_Pct"]
+            st.markdown(f'<div class="alert-red">🔴 <strong>{row["Account"]} — {row["Line Item"]}</strong>: Actual ${row[f"{mo}_Act"]:,.2f} vs Budget ${row[f"{mo}_Bud"]:,.2f} = <strong>${var:+,.2f} ({var_pct:+.1f}%)</strong></div>',unsafe_allow_html=True)
+        for _, row in warning.iterrows():
+            var = row[f"{mo}_Var"]; var_pct = row[f"{mo}_Var_Pct"]
+            st.markdown(f'<div class="alert-yellow">🟡 <strong>{row["Account"]} — {row["Line Item"]}</strong>: Actual ${row[f"{mo}_Act"]:,.2f} vs Budget ${row[f"{mo}_Bud"]:,.2f} = <strong>${var:+,.2f} ({var_pct:+.1f}%)</strong></div>',unsafe_allow_html=True)
+
+    st.markdown('<p class="section-title">📊 Variance Waterfall — Top Over-Budget Items</p>',unsafe_allow_html=True)
+    expense_over = BUDGET_LINES[(BUDGET_LINES["Type"]=="expense") & (BUDGET_LINES[f"{mo}_Var"]>50)].copy()
+    expense_over = expense_over.nlargest(8, f"{mo}_Var")
+    if not expense_over.empty:
+        fig_wfall = go.Figure(go.Bar(
+            x=expense_over["Line Item"],
+            y=expense_over[f"{mo}_Var"],
+            marker_color=["#ef4444" if v>500 else "#f59e0b" if v>100 else "#fbbf24"
+                          for v in expense_over[f"{mo}_Var"]],
+            text=[f"${v:+,.0f}" for v in expense_over[f"{mo}_Var"]],
+            textposition="outside",
+        ))
+        fig_wfall.add_hline(y=100, line_dash="dot", line_color="#94a3b8",
+                             annotation_text="$100 threshold", annotation_position="top right")
+        fig_wfall.update_layout(height=320, margin=dict(t=30,b=80),
+                                 yaxis_title="$ Over Budget",
+                                 xaxis_tickangle=-30,
+                                 title=f"Over-Budget Expenses — {month_sel}")
+        st.plotly_chart(fig_wfall, use_container_width=True)
 
     st.markdown('<p class="section-title">🔍 GL Reconciliation</p>',unsafe_allow_html=True)
     rt1,rt2=st.tabs(["January 2026 ✅","February 2026 ⚠️"])
