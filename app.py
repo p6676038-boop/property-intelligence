@@ -646,7 +646,7 @@ with tab2:
         st.plotly_chart(fig_exp,use_container_width=True)
     with col_hold:
         st.markdown("**⚠️ Holdover / Expired Leases:**")
-        holdovers=df_occ[df_occ["Lease_End_dt"]<pd.Timestamp("2026-03-31")][["Unit","Tenant","Lease_End","Balance"]].copy()
+        holdovers=df_leases[df_leases["Lease_End_dt"]<pd.Timestamp("2026-03-31")][["Unit","Tenant","Lease_End","Balance"]].copy()
         holdovers["Balance"]=holdovers["Balance"].map(lambda x:f"(${abs(x):,.0f})" if x<0 else f"${x:,.0f}")
         if len(holdovers):
             st.dataframe(holdovers,use_container_width=True,hide_index=True)
