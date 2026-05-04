@@ -209,77 +209,281 @@ def flag_line(row, month="Mar"):
 for mo in ["Jan","Feb","Mar"]:
     BUDGET_LINES[f"{mo}_Flag"] = BUDGET_LINES.apply(lambda r: flag_line(r, mo), axis=1)
 
-# ── GL DRILL-DOWN ──
+# ── GL DRILL-DOWN — EVERY line item, sourced from actual March 2026 GL report ──
 GL_DRILLDOWN = {
-    "6370 \u2014 Bad Debt ($1,699 vs $697 budget)": {
-        "verdict": "\U0001f534 REAL EXPENSE \u2014 Not accrual timing",
-        "explanation": "Two actual tenant write-offs processed Feb-16. LOSTRENT $1,178 + LOSTOTHER $521 = $1,699. These are genuine bad debt entries. Jan-26 also had $5,819 bad debt. YTD bad debt = $7,518 vs $1,394 budget \u2014 439% over. Investigate which units and whether HUD subsidy adjustments are current.",
+
+    # ══════════════════════════════════════════════════════════
+    # INCOME ACCOUNTS
+    # ══════════════════════════════════════════════════════════
+    "5220 — Vacancy Loss ($1,379 vs $1,686 budget)": {
+        "verdict": "✅ UNDER BUDGET — Occupancy at record high",
+        "explanation": "Single GL entry: vacancy loss of $1,379 booked on 03/31 as part of the monthly rent roll close. Budget was $1,686. Only C6 (900 sf) was vacant all month. Units 3-2 (Ferebee, moved in 03/09) and 5-7 (Harris, moved in 03/19) filled mid-month which is why actual vacancy is below the full-month budget. No issue here.",
         "transactions": [
-            {"Date":"02/16/2026","Description":"LOSTRENT \u2014 Lost To Uncollectible (Rent)","Amount":"$1,178.00","Type":"Real write-off"},
-            {"Date":"02/16/2026","Description":"LOSTOTHER \u2014 Lost To Uncollectible (Other)","Amount":"$521.00","Type":"Real write-off"},
+            {"Date":"03/31/2026","Description":"VACANCY — Vacancy Loss (rent roll close)","Amount":"$1,379.00","Type":"✅ Under budget — 98.6% occupancy"},
         ]
     },
-    "6450 \u2014 Electricity ($6,039 vs $4,605 budget)": {
-        "verdict": "\U0001f7e1 ACCRUAL TIMING \u2014 Not a real Feb overspend",
-        "explanation": "Feb-26 electricity = $9,851.95 accrual MINUS $3,877.20 prior month reversal + $64.69 AGT = net $6,039. Actual Mar-26 bill = $7,967. Accrual overstated by ~$1,885. Deleted batch #1419 created noise but was fully reversed Feb-28.",
+
+    # ══════════════════════════════════════════════════════════
+    # EXPENSE ACCOUNTS
+    # ══════════════════════════════════════════════════════════
+    "6250 — Other Renting Expenses ($125 vs $85 budget)": {
+        "verdict": "🟡 MINOR OVER — Two Veriscreen background check invoices",
+        "explanation": "Two Veriscreen background check invoices totaling $125: Feb 2026 batch $50 + Dec 2025 batch $75. The Dec batch was backlogged. Budget is $85/mo. The $40 overage is from the catchup of a prior-month invoice, not an ongoing trend. Background checks are required for all new move-ins.",
         "transactions": [
-            {"Date":"02/01/2026","Description":"Reversed prior accrual (Dec-25)","Amount":"-$3,877.20","Type":"Accrual reversal"},
-            {"Date":"02/16/2026","Description":"Deleted Batch #1419 \u2014 entered then reversed","Amount":"$7,149.75 \u2192 $0","Type":"\u26a0\ufe0f Error entry (net zero)"},
-            {"Date":"02/16/2026","Description":"City of EC \u2014 AGT account final bill","Amount":"$64.69","Type":"Actual bill"},
-            {"Date":"02/28/2026","Description":"Feb-26 utility accrual (estimated)","Amount":"$9,851.95","Type":"Accrual (overestimated)"},
+            {"Date":"03/03/2026","Description":"Veriscreen — Credit/Criminal checks 2/1-2/28/26","Amount":"$50.00","Type":"Normal — Feb batch"},
+            {"Date":"03/05/2026","Description":"Veriscreen — Credit/Criminal checks 12/1-12/31/25","Amount":"$75.00","Type":"⚠️ Dec backlog — late posting"},
         ]
     },
-    "6530 \u2014 Security ($519 vs $106 budget)": {
-        "verdict": "\U0001f534 REAL EXPENSE \u2014 Capital equipment replacement",
-        "explanation": "Three invoices from Down East Protection Systems. $49.90 + $49.90 normal recurring. $419.23 for Replace Hard Drive is one-time, possibly miscoded. Should be in 7100 or capitalized.",
+
+    "6311 — Office Expenses ($1,277 vs $1,028 budget)": {
+        "verdict": "🔴 ONE-TIME ITEM — Blueprint scans $770 is the entire overage",
+        "explanation": "All routine items total ~$507 (under budget alone): Realpage $140 + scanner fee $137 + Toshiba copier $103 + cell phone $71 + paper $34 + postage $11 + Lowe\'s water $13. The entire budget overage ($249) comes from The Frame Works — Blueprint Scans $770.40. This is a one-time cost. Verify purpose — if related to capital project or renovation specs, should be reclassified to 7100 or capitalized, not coded to office expenses.",
         "transactions": [
-            {"Date":"02/16/2026","Description":"Down East Protection: Security Service Jan","Amount":"$49.90","Type":"Normal recurring"},
-            {"Date":"02/16/2026","Description":"Down East Protection: Monitoring Service Feb","Amount":"$49.90","Type":"Normal recurring"},
-            {"Date":"02/16/2026","Description":"Down East Protection: Replace Hard Drive","Amount":"$419.23","Type":"\u26a0\ufe0f One-time \u2014 possible miscoding"},
+            {"Date":"03/11/2026","Description":"Realpage — Monthly software 3/1-3/31","Amount":"$139.86","Type":"Normal recurring"},
+            {"Date":"03/20/2026","Description":"Realpage — Scanner monthly fee (2 entries)","Amount":"$136.54","Type":"Normal recurring"},
+            {"Date":"03/18/2026","Description":"Toshiba — Printer rental 2/28-3/29","Amount":"$103.38","Type":"Normal recurring"},
+            {"Date":"03/11/2026","Description":"Beacon Mgmt — Cell phone reimb 2/16-3/15","Amount":"$70.55","Type":"Normal recurring"},
+            {"Date":"03/18/2026","Description":"ODP Business Solutions — Paper","Amount":"$33.58","Type":"Normal recurring"},
+            {"Date":"03/26/2026","Description":"Beacon Mgmt — Postage meter lease 4/20-7/19","Amount":"$10.55","Type":"Normal recurring"},
+            {"Date":"03/26/2026","Description":"Lowe\'s Pro Supply — Water (x2)","Amount":"$12.56","Type":"Minor — possibly miscoded to supplies"},
+            {"Date":"03/31/2026","Description":"THE FRAME WORKS — Blueprint Scans","Amount":"$770.40","Type":"🔴 One-time — verify, consider reclassify to 7100"},
         ]
     },
-    "7100 \u2014 Other/Non-Recurring ($5,841 vs $1,707 budget) [Feb]": {
-        "verdict": "\U0001f534 REAL EXPENSES \u2014 Multiple unit repairs + large plumbing job",
-        "explanation": "13 transactions totaling $5,841. Major: Dickson Plumbing toilet Apt 3-1 $2,178 (unusually expensive \u2014 verify scope), VSC Fire pump $897, HD Supply range $868, Rick's wall repair $470, deep clean $500.",
+
+    "6320 — Management Fees ($2,687 vs $2,721 budget)": {
+        "verdict": "✅ ON BUDGET — Standard accrual cycle, clean",
+        "explanation": "Textbook management fee accrual cycle. Feb accrual $2,510 reversed on 03/01, then Feb actual invoice $2,510 posted, then March accrual $2,687 posted on 03/31. Net = $2,687 (March fee = 3.5% of March collections). $34 under budget. No issues.",
         "transactions": [
-            {"Date":"02/16/2026","Description":"Dickson Plumbing \u2014 Replace toilet Apt 3-1","Amount":"$2,178.23","Type":"\U0001f534 High \u2014 verify scope"},
-            {"Date":"02/16/2026","Description":"VSC Fire & Security \u2014 Repair fire pump leak","Amount":"$896.54","Type":"Safety item"},
-            {"Date":"02/16/2026","Description":"HD Supply \u2014 Range replacement","Amount":"$868.33","Type":"Unit appliance"},
-            {"Date":"02/05/2026","Description":"Rick's Home Service \u2014 Wall repair Apt 5-2","Amount":"$470.00","Type":"Unit repair"},
-            {"Date":"02/01/2026","Description":"Rick's Home Service \u2014 Deep clean Apt 7-6","Amount":"$500.00","Type":"Turnover cost"},
-            {"Date":"02/04/2026","Description":"Rick's Home Service \u2014 HVAC repair Apt M-1","Amount":"$305.00","Type":"HVAC repair"},
-            {"Date":"02/04/2026","Description":"Lowe's Pro Supply \u2014 Refrigerator Apt 7-6","Amount":"$357.76","Type":"Unit appliance"},
-            {"Date":"02/11/2026","Description":"Dickson Plumbing \u2014 Unclog toilet Apt 3-4","Amount":"$165.00","Type":"Normal repair"},
-            {"Date":"02/23/2026","Description":"Mr Snowden's Pest Control \u2014 Roach clean out","Amount":"$45.00","Type":"Normal recurring"},
-            {"Date":"02/23/2026","Description":"Rick's Home Service \u2014 Bulk trash removal Apt 3-2","Amount":"$400.00","Type":"Turnover cost"},
+            {"Date":"03/01/2026","Description":"Reversed — Feb management fee accrual","Amount":"-$2,510.44","Type":"Accrual reversal"},
+            {"Date":"03/02/2026","Description":"Beacon Mgmt — Management fee Feb 2026 (actual invoice)","Amount":"$2,510.44","Type":"Feb actual"},
+            {"Date":"03/31/2026","Description":"3.2026 Management fee accrual (GJ)","Amount":"$2,686.52","Type":"Mar accrual — month-end"},
         ]
     },
-    "7100 \u2014 Other/Non-Recurring ($9,060 vs $1,707 budget) [Mar]": {
-        "verdict": "\U0001f534 REAL EXPENSES \u2014 Reason unknown, needs management clarification",
-        "explanation": "March 7100 = $9,060 vs $1,707 budget (430% over). GL: $9,405 debit, $345 credit = $9,060 net. Specific invoices unknown \u2014 management (Kenya Owens / Beacon) must provide backup. Must clarify before investor reporting.",
+
+    "6330 — Manager Salaries ($3,000 vs $3,200 budget)": {
+        "verdict": "✅ UNDER BUDGET — Two payroll chargebacks, clean",
+        "explanation": "Two bi-monthly payroll chargebacks from Beacon Management: 3/4/26 payroll $1,500 + 3/18/26 payroll $1,500 = $3,000. Budget $3,200. $200 under. Payroll is processed by Beacon and recharged via the chargeback mechanism. Both periods clean, no anomalies.",
         "transactions": [
-            {"Date":"03/2026","Description":"Multiple transactions totaling $9,404.89 debit","Amount":"$9,060.35 net","Type":"\u26a0\ufe0f Details unknown \u2014 request invoice backup from Beacon"},
+            {"Date":"03/05/2026","Description":"Beacon Mgmt Chargebacks — Payroll 3/4/26 (PE)","Amount":"$1,500.00","Type":"Bi-monthly payroll"},
+            {"Date":"03/20/2026","Description":"Beacon Mgmt Chargebacks — Payroll 3/18/26 (PE)","Amount":"$1,500.00","Type":"Bi-monthly payroll"},
         ]
     },
-    "6311 \u2014 Office Expenses ($1,160 vs $1,028 budget)": {
-        "verdict": "\U0001f7e1 REAL EXPENSE \u2014 Brightspeed late fee driving overage",
-        "explanation": "Brightspeed internet $390.97 + $42 late fee + $110 adjustments = $543 total. $42 late fee avoidable. Realpage $140, ODP supplies $138, copier $103 all normal.",
+
+    "6510 — Maintenance Payroll ($3,840 vs $3,840 budget)": {
+        "verdict": "✅ EXACTLY ON BUDGET — Two payroll periods, zero variance",
+        "explanation": "Two bi-monthly maintenance payroll chargebacks from Beacon: $1,920 x 2 = $3,840 exactly. Zero variance. Clean.",
         "transactions": [
-            {"Date":"02/11/2026","Description":"Brightspeed \u2014 Internet service Jan-Feb","Amount":"$390.97","Type":"Normal"},
-            {"Date":"02/11/2026","Description":"Brightspeed \u2014 Late fee","Amount":"$42.00","Type":"\u26a0\ufe0f Avoidable \u2014 late payment"},
-            {"Date":"02/13/2026","Description":"Brightspeed \u2014 Manual adjustments (x2)","Amount":"$110.00","Type":"\u26a0\ufe0f Billing dispute"},
-            {"Date":"02/16/2026","Description":"Toshiba \u2014 Copier lease","Amount":"$103.38","Type":"Normal"},
-            {"Date":"02/03/2026","Description":"Realpage \u2014 Monthly software service","Amount":"$139.86","Type":"Normal"},
+            {"Date":"03/05/2026","Description":"Beacon Mgmt Chargebacks — Maintenance payroll 3/4/26","Amount":"$1,920.00","Type":"Bi-monthly payroll"},
+            {"Date":"03/20/2026","Description":"Beacon Mgmt Chargebacks — Maintenance payroll 3/18/26","Amount":"$1,920.00","Type":"Bi-monthly payroll"},
         ]
     },
-    "6525 \u2014 Garbage & Trash ($296 vs $280 budget)": {
-        "verdict": "\U0001f7e1 ACCRUAL ISSUE \u2014 Actual charge correct, accrual understated",
-        "explanation": "Feb actual $295.62 (only $15.62 over \u2014 fine). BUT Feb accrual was only $24.17 vs actual $280 office refuse. Accrual methodology broken for this account. Mar-26 spiked as expected.",
+
+    "6515 — Supplies ($650 vs $732 budget)": {
+        "verdict": "✅ UNDER BUDGET — Normal Lowe\'s supply run, accrual reversed",
+        "explanation": "Feb Lowe\'s supplies accrual $513 reversed on 03/01. Then multiple Lowe\'s invoices posted throughout month: blinds $219, sump pump + PVC fittings $294, cleaning supplies $215, sheet rock/bulbs $99+$61, drain cleaners $71, miscellaneous small items. Total $1,163 debit, $513 credit = $650 net. All are standard maintenance and janitorial supplies. Under budget by $82.",
         "transactions": [
-            {"Date":"02/01/2026","Description":"Reversed prior accrual","Amount":"-$153.55","Type":"Accrual reversal"},
-            {"Date":"02/16/2026","Description":"City of EC \u2014 Office refuse charge","Amount":"$18.55","Type":"Actual bill (AGT)"},
-            {"Date":"02/28/2026","Description":"Feb-26 garbage accrual (understated)","Amount":"$24.17","Type":"\u26a0\ufe0f Accrual too low"},
-            {"Date":"02/28/2026","Description":"Manual entry \u2014 GARBAGE AND TRASH","Amount":"$406.45","Type":"\u26a0\ufe0f Verify not duplicate"},
+            {"Date":"03/01/2026","Description":"Reversed — Feb Lowe\'s supplies accrual","Amount":"-$513.45","Type":"Accrual reversal"},
+            {"Date":"03/01/2026","Description":"Lowe\'s Pro Supply — Blinds","Amount":"$219.44","Type":"Unit supplies"},
+            {"Date":"03/03/2026","Description":"Lowe\'s Pro Supply — Sump pump + PVC fittings + valve + cord","Amount":"$294.01","Type":"Plumbing supplies"},
+            {"Date":"03/10/2026","Description":"Lowe\'s Pro Supply — Cleaning supplies (Lysol, CLR, pumice, brushes etc.)","Amount":"$214.86","Type":"Janitorial"},
+            {"Date":"03/16/2026","Description":"Lowe\'s Pro Supply — Sheet rock mud + light bulbs","Amount":"$99.35","Type":"Maintenance"},
+            {"Date":"03/16/2026","Description":"Lowe\'s Pro Supply — Light bulbs","Amount":"$60.93","Type":"Maintenance"},
+            {"Date":"03/26/2026","Description":"Lowe\'s Pro Supply — Drain cleaner, paper towels, bathroom cleaner","Amount":"$71.61","Type":"Janitorial"},
+            {"Date":"03/31/2026","Description":"Lowe\'s Pro Supply — Toilet seat, nails, knife, light switch, electrical box","Amount":"$90.69","Type":"Unit maintenance"},
+            {"Date":"03/31/2026","Description":"Lowe\'s Pro Supply — Magic eraser, bar keepers spray, paint, pumice stone","Amount":"$112.21","Type":"Cleaning/paint"},
+        ]
+    },
+
+    "6520 — Contracts ($2,943 vs $3,843 budget)": {
+        "verdict": "✅ UNDER BUDGET — Pest control actual + Jan-Mar catch-up accrual",
+        "explanation": "Two entries: Mr Snowden\'s Pest Control $150 (actual March invoice) + GJ accrual labeled \'032026 ACCRUALS JAN-MARCH\' $2,793. The accrual label suggests this is catching up 3 months of a service contract not previously invoiced. The contract itself is fine — $2,793 / 3 months = $931/mo average, within the $3,843 annual budget ($320/mo). Under budget for the month.",
+        "transactions": [
+            {"Date":"03/30/2026","Description":"Mr Snowden\'s Pest Control — Pest control 3/1-3/31/26","Amount":"$150.00","Type":"Normal monthly"},
+            {"Date":"03/31/2026","Description":"GJ Accrual — 032026 ACCRUALS JAN-MARCH","Amount":"$2,792.70","Type":"⚠️ 3-month catch-up accrual — verify what contract this covers"},
+        ]
+    },
+
+    "6525 — Garbage & Trash ($286 vs $280 budget)": {
+        "verdict": "✅ ESSENTIALLY ON BUDGET — Two actual bills booked, Feb accrual issue resolved",
+        "explanation": "Feb accrual anomaly ($24.17 understated + $406.45 manual entry) both reversed on 03/01. Then two actual City EC office refuse bills booked: Jan bill $280 + Mar bill $280. End accrual $156.47. Net $286 vs $280 budget. The Feb accrual methodology error is now corrected.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"Reversed — Feb garbage accrual ($24.17)","Amount":"-$24.17","Type":"Accrual reversal — fixed"},
+            {"Date":"03/01/2026","Description":"Reversed — Feb GARBAGE AND TRASH manual entry","Amount":"-$406.45","Type":"Manual entry reversed"},
+            {"Date":"03/16/2026","Description":"City of EC — Office refuse 1/13-2/5/26","Amount":"$280.00","Type":"Jan actual bill"},
+            {"Date":"03/25/2026","Description":"City of EC — Office refuse 2/5-3/11/26","Amount":"$280.00","Type":"Mar actual bill"},
+            {"Date":"03/31/2026","Description":"March-end garbage accrual (GJ)","Amount":"$156.47","Type":"Month-end accrual"},
+        ]
+    },
+
+    "6530 — Security ($99.80 vs $106 budget)": {
+        "verdict": "✅ ON BUDGET — Clean month, no hard drive charge unlike Feb",
+        "explanation": "Two Down East Protection monitoring invoices: March service $49.90 + April service $49.90 = $99.80. Under budget by $6. Note: February had an extra $419.23 hard drive replacement charge that inflated that month. March is back to normal recurring monitoring only.",
+        "transactions": [
+            {"Date":"03/30/2026","Description":"Down East Protection — Monitoring service 3/1-3/31/26","Amount":"$49.90","Type":"Normal recurring"},
+            {"Date":"03/30/2026","Description":"Down East Protection — Monitoring service 4/1-4/30/26","Amount":"$49.90","Type":"Next month prepaid"},
+        ]
+    },
+
+    "6711 — Payroll Taxes ($521 vs $607 budget)": {
+        "verdict": "✅ UNDER BUDGET — Two payroll tax chargebacks, clean",
+        "explanation": "Payroll taxes for both payroll periods: 3/4/26 PE = $266 + 3/18/26 PE = $255 = $521. Under budget $86. Calculated as percentage of payroll. No issues.",
+        "transactions": [
+            {"Date":"03/05/2026","Description":"Beacon Mgmt Chargebacks — Payroll taxes 3/4/26 (PE)","Amount":"$265.99","Type":"Normal"},
+            {"Date":"03/20/2026","Description":"Beacon Mgmt Chargebacks — Payroll taxes 3/18/26 (PE)","Amount":"$254.98","Type":"Normal"},
+        ]
+    },
+
+    "6720 — Property & Liability Insurance ($4,669 vs $4,553 budget)": {
+        "verdict": "🟡 MINOR OVER — EPLI insurance add-on is new item",
+        "explanation": "Monthly insurance amortization is standard and on budget: base policy $3,585 + excess flood $968 = $4,553 (exactly budget). The overage comes from one new item: Beacon Mgmt reimbursed for EPLI Insurance (Employment Practices Liability) 3/1/26-27 = $115.74. This is either a new coverage or a prior coverage now being tracked. Minor but should be added to budget going forward.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"Monthly insurance amortization (GJ)","Amount":"$3,584.75","Type":"Standard — on budget"},
+            {"Date":"03/01/2026","Description":"Monthly excess flood insurance amortization (GJ)","Amount":"$968.27","Type":"Standard — on budget"},
+            {"Date":"03/18/2026","Description":"Beacon Mgmt — EPLI Insurance reimbursement 3/1/26-27","Amount":"$115.74","Type":"⚠️ New item — add to budget"},
+        ]
+    },
+
+    "6722 — Workers Compensation ($56 vs $78 budget)": {
+        "verdict": "✅ UNDER BUDGET — Refund received, net below budget",
+        "explanation": "Monthly workers comp amortization $80.67, minus a refund credit $24.83 (workers comp refund for period 11/3/24-25). Net $55.84, under budget $22. The refund is a one-time credit from prior period audit. No issues.",
+        "transactions": [
+            {"Date":"03/28/2026","Description":"Monthly workers comp amortization (GJ)","Amount":"$80.67","Type":"Standard"},
+            {"Date":"03/27/2026","Description":"Workers comp refund 11/3/24-25","Amount":"-$24.83","Type":"✅ Credit received — prior period refund"},
+        ]
+    },
+
+    "6723 — Health Insurance & Benefits ($1,815 vs $1,795 budget)": {
+        "verdict": "✅ ON BUDGET — BCBS + USABLE less payroll chargebacks",
+        "explanation": "BCBS health insurance $2,321 + USABLE dental/vision $54 = $2,375 gross. Two payroll chargebacks reduce this by $280 x 2 = $560 (employee portion collected through payroll). Net $1,815 vs $1,795 budget. $20 over, negligible. Clean.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"BCBS — Health insurance 3/1-3/31/26","Amount":"$2,320.77","Type":"Standard"},
+            {"Date":"03/01/2026","Description":"USABLE — Dental/vision 3/1-3/31/26","Amount":"$54.05","Type":"Standard"},
+            {"Date":"03/05/2026","Description":"Beacon Chargebacks — Employee health contribution PE-3/4","Amount":"-$279.92","Type":"Employee portion offset"},
+            {"Date":"03/20/2026","Description":"Beacon Chargebacks — Employee health contribution PE-3/18","Amount":"-$279.92","Type":"Employee portion offset"},
+        ]
+    },
+
+    "6820 — Interest Expense ($13,666 vs $13,666 budget)": {
+        "verdict": "✅ EXACTLY ON BUDGET — Berkadia mortgage, single payment",
+        "explanation": "Berkadia mortgage draft pulled 3/8/26 for exactly $13,665.62. Interest-only period (runs through January 2029). Zero variance. Note: slightly lower than prior months ($15,130) — this reflects the Berkadia payment schedule which includes escrow components separately.",
+        "transactions": [
+            {"Date":"03/08/2026","Description":"Berkadia Commercial Mortgage — Monthly draft 3/8/26","Amount":"$13,665.62","Type":"✅ Exactly on budget"},
+        ]
+    },
+
+    "7190 — Incentive Management Fee ($672 vs $680 budget)": {
+        "verdict": "✅ ON BUDGET — 1% accrual, standard",
+        "explanation": "Month-end GJ accrual of 1% incentive fee = $671.63 vs $680 budget. $8 under. Standard calculation based on March collections. No issues.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"3.2026 Management fee accrual 1% (GJ)","Amount":"$671.63","Type":"Standard 1% accrual"},
+        ]
+    },
+
+    # ═══════════════════════════════════════════════════════════
+    # UTILITIES (already fully GL-sourced)
+    # ═══════════════════════════════════════════════════════════
+    "6450 — Electricity ($9,035 vs $4,605 budget) [Mar]": {
+        "verdict": "🟡 TWO BILLING PERIODS + LATE FEE — Not a single-month overage",
+        "explanation": "March GL books TWO City EC bills (Feb+Mar cycle) plus a late fee. Feb accrual reversed -$9,852, then: City EC Jan bill elec $7,824 + Mar bill elec $6,423 + office bills $215 + late fee $156 + end accrual $4,269 = $9,035 net. Actual per-month electricity ~$7,230/mo avg (57% above $4,605 budget due to DD3 demand charge). Late fee $156 is avoidable.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"Reversed Feb-26 electricity accrual","Amount":"-$9,851.95","Type":"Accrual reversal"},
+            {"Date":"03/16-18/2026","Description":"City of EC — Jan bill (1/12-2/11) electricity portion","Amount":"$7,929.77","Type":"Jan actual bill booked in Mar"},
+            {"Date":"03/27/2026","Description":"City of EC — Mar bill (2/10-3/11) electricity = $6,423","Amount":"$6,422.90","Type":"Mar actual bill"},
+            {"Date":"03/27/2026","Description":"City of EC — Office electricity Mar = $109","Amount":"$108.88","Type":"Office bill"},
+            {"Date":"03/27/2026","Description":"City of EC — LATE FEE 4/14/26","Amount":"$156.11","Type":"⚠️ Avoidable late fee"},
+            {"Date":"03/31/2026","Description":"March-end electricity accrual (GJ)","Amount":"$4,268.95","Type":"Month-end accrual"},
+        ]
+    },
+
+    "6451 — Water ($1,181 vs $817 budget) [Mar]": {
+        "verdict": "🟡 TWO BILLS + LATE FEE — Timing, actual run-rate on budget",
+        "explanation": "Two water bills ($812.49 each) + late fee $156. Actual run-rate $812/mo = on budget. Entirely accrual timing. Water still estimated at exactly 99 units every month — city has not physically read meter in 16+ months.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"Reversed Feb-26 water accrual","Amount":"-$1,132.56","Type":"Accrual reversal"},
+            {"Date":"03/18/2026","Description":"City EC — Water 1/12-2/11 (99 units, estimated)","Amount":"$812.49","Type":"Jan actual bill"},
+            {"Date":"03/27/2026","Description":"City EC — Water 2/10-3/11 (99 units, estimated)","Amount":"$812.49","Type":"Mar actual bill"},
+            {"Date":"03/27/2026","Description":"City EC — Late fee 4/14/26","Amount":"$156.12","Type":"⚠️ Avoidable late fee"},
+            {"Date":"03/31/2026","Description":"March-end water accrual (GJ)","Amount":"$532.32","Type":"Month-end accrual"},
+        ]
+    },
+
+    "6452 — Gas ($917 vs $745 budget) [Mar]": {
+        "verdict": "🟡 TWO DELIVERIES — Transition month, normalizing",
+        "explanation": "Two Blossman deliveries: Mar-05 = $559.26 + Mar-16 = $357.86 (145.7 gal @ $2.249). Two deliveries as winter ends and tank is low is normal. Gas should return to one delivery/month in April.",
+        "transactions": [
+            {"Date":"03/06/2026","Description":"Blossman Gas — Propane delivery 3/5/26","Amount":"$559.26","Type":"Delivery 1"},
+            {"Date":"03/17/2026","Description":"Blossman Gas — Propane delivery 3/16/26 (#35210286, 145.7 gal)","Amount":"$357.86","Type":"Delivery 2"},
+        ]
+    },
+
+    "6453 — Sewer ($1,078 vs $775 budget) [Mar]": {
+        "verdict": "🟡 TWO BILLS + LATE FEE — Same timing as water",
+        "explanation": "Feb accrual reversed ($1,019), two sewer bills ($731.19 each) + late fee $156. Actual run-rate $731/mo. Timing only, will normalize April.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"Reversed Feb-26 sewer accrual","Amount":"-$1,019.23","Type":"Accrual reversal"},
+            {"Date":"03/18/2026","Description":"City EC — Sewer 1/12-2/11","Amount":"$731.19","Type":"Jan actual bill"},
+            {"Date":"03/27/2026","Description":"City EC — Sewer 2/10-3/11","Amount":"$731.19","Type":"Mar actual bill"},
+            {"Date":"03/27/2026","Description":"City EC — Late fee 4/14/26","Amount":"$156.12","Type":"⚠️ Avoidable late fee"},
+            {"Date":"03/31/2026","Description":"March-end sewer accrual (GJ)","Amount":"$479.06","Type":"Month-end accrual"},
+        ]
+    },
+
+    "7100 — Other/Non-Recurring ($9,060 vs $1,707 budget) [Mar]": {
+        "verdict": "🔴 REAL EXPENSES — Elevator + HVAC/freon + plumbing (all in GL)",
+        "explanation": "Fully documented. Main drivers: Rick\'s HVAC/freon on TWO units = $3,475 (thermostat/Schrader valve/freon Apt 2-6 $1,450 + compressor/valves/freon 2nd unit $2,025). TK Elevator safety repair $1,469 (overshot floor/relay/cut cable). Dickson Plumbing sewer line + leaks = $2,779. HD Supply range $868. Credit $345. Dual freon top-ups = aging HVAC — schedule inspection.",
+        "transactions": [
+            {"Date":"03/01/2026","Description":"TK Elevator Corp — Overshot floor/relay/repair cut cable","Amount":"$1,468.58","Type":"🔴 Elevator safety repair"},
+            {"Date":"03/01/2026","Description":"HD Supply — Range replacement","Amount":"$868.33","Type":"Unit appliance"},
+            {"Date":"03/03/2026","Description":"Dickson Plumbing — Clear drain Apt 5-5","Amount":"$583.52","Type":"Plumbing"},
+            {"Date":"03/04/2026","Description":"TK Elevator Corp — Late fee","Amount":"$17.01","Type":"⚠️ Avoidable"},
+            {"Date":"03/08/2026","Description":"Beacon Mgmt — Permit fee reimbursement","Amount":"$52.49","Type":"Admin"},
+            {"Date":"03/10/2026","Description":"Dickson Plumbing — Clear sewer line","Amount":"$1,470.68","Type":"🔴 Major plumbing"},
+            {"Date":"03/10/2026","Description":"Dickson Plumbing — Repair pipe leak","Amount":"$512.70","Type":"Plumbing"},
+            {"Date":"03/23/2026","Description":"Sherwin-Williams — Paint","Amount":"$400.93","Type":"Maintenance"},
+            {"Date":"03/23/2026","Description":"Rick\'s Home Service — Thermostat/Schrader valve/Freon Apt 2-6","Amount":"$1,450.30","Type":"🔴 HVAC freon"},
+            {"Date":"03/23/2026","Description":"Rick\'s Home Service — Compressor/valves/Freon 2nd unit","Amount":"$2,025.30","Type":"🔴 HVAC compressor (largest)"},
+            {"Date":"03/30/2026","Description":"Cogency Global — Statutory representation 4/1/26-3/31/27","Amount":"$109.00","Type":"Legal/compliance"},
+            {"Date":"03/30/2026","Description":"Reimbursement check received (CR)","Amount":"-$344.54","Type":"✅ Credit"},
+            {"Date":"03/31/2026","Description":"Lowe\'s — Flag + Cement + Thermostat","Amount":"$233.07","Type":"Supplies"},
+            {"Date":"03/31/2026","Description":"Dickson Plumbing — Repair pipe leak/lobby","Amount":"$212.80","Type":"Plumbing"},
+        ]
+    },
+
+    # ═══════════════════════════════════════════════════════════
+    # FEBRUARY 2026 flagged accounts (original)
+    # ═══════════════════════════════════════════════════════════
+    "6370 — Bad Debt ($1,699 vs $697 budget) [Feb]": {
+        "verdict": "🔴 REAL EXPENSE — Two actual tenant write-offs",
+        "explanation": "LOSTRENT $1,178 + LOSTOTHER $521 = $1,699. Genuine bad debt write-offs. Jan-26 also had $5,819. YTD $7,518 vs $1,394 budget (439% over). Investigate which units and confirm HUD subsidy adjustments are current.",
+        "transactions": [
+            {"Date":"02/16/2026","Description":"LOSTRENT — Lost To Uncollectible (Rent)","Amount":"$1,178.00","Type":"Real write-off"},
+            {"Date":"02/16/2026","Description":"LOSTOTHER — Lost To Uncollectible (Other)","Amount":"$521.00","Type":"Real write-off"},
+        ]
+    },
+
+    "6530 — Security ($519 vs $106 budget) [Feb]": {
+        "verdict": "🔴 HARD DRIVE MISCODED — Should be 7100 or capitalized",
+        "explanation": "Two normal monitoring invoices $49.90 each = $99.80 fine. Plus Down East Protection Replace Hard Drive $419.23 — one-time capital item miscoded to operating security. Should be reclassified. March security = $99.80, clean.",
+        "transactions": [
+            {"Date":"02/16/2026","Description":"Down East Protection — Security service Jan","Amount":"$49.90","Type":"Normal"},
+            {"Date":"02/16/2026","Description":"Down East Protection — Monitoring Feb","Amount":"$49.90","Type":"Normal"},
+            {"Date":"02/16/2026","Description":"Down East Protection — Replace Hard Drive","Amount":"$419.23","Type":"⚠️ Miscoded — reclassify to 7100"},
+        ]
+    },
+
+    "7100 — Other/Non-Recurring ($5,841 vs $1,707 budget) [Feb]": {
+        "verdict": "🔴 REAL REPAIRS — Toilet $2,178 + fire pump + range + turnovers",
+        "explanation": "Multiple unit repairs. Biggest: Dickson Plumbing toilet Apt 3-1 $2,178 (verify scope), VSC Fire pump $897, HD range $868, turnover costs $900, HVAC $305, fridge $358.",
+        "transactions": [
+            {"Date":"02/16/2026","Description":"Dickson Plumbing — Replace toilet Apt 3-1","Amount":"$2,178.23","Type":"🔴 High — verify scope"},
+            {"Date":"02/16/2026","Description":"VSC Fire & Security — Fire pump repair","Amount":"$896.54","Type":"Safety"},
+            {"Date":"02/16/2026","Description":"HD Supply — Range replacement","Amount":"$868.33","Type":"Unit appliance"},
+            {"Date":"02/05/2026","Description":"Rick\'s Home Service — Wall repair Apt 5-2","Amount":"$470.00","Type":"Unit repair"},
+            {"Date":"02/01/2026","Description":"Rick\'s Home Service — Deep clean Apt 7-6","Amount":"$500.00","Type":"Turnover"},
+            {"Date":"02/04/2026","Description":"Rick\'s Home Service — HVAC repair Apt M-1","Amount":"$305.00","Type":"HVAC"},
+            {"Date":"02/04/2026","Description":"Lowe\'s Pro Supply — Refrigerator Apt 7-6","Amount":"$357.76","Type":"Unit appliance"},
+            {"Date":"02/11/2026","Description":"Dickson Plumbing — Unclog toilet Apt 3-4","Amount":"$165.00","Type":"Normal"},
+            {"Date":"02/23/2026","Description":"Rick\'s Home Service — Bulk trash removal Apt 3-2","Amount":"$400.00","Type":"Turnover"},
         ]
     },
 }
@@ -503,8 +707,8 @@ with tab1:
          "No bad debt written off in March. January had a spike ($5,819) — that appears to have been addressed. YTD bad debt $7,518 vs $2,091 budget is still elevated, but March itself is clean."),
         ("Vacancy Loss","$1,379","$1,686","$307 under","Good — under budget","✅",
          "Vacancy loss improved significantly. 98.6% occupancy — only C6 vacant. Rent roll confirms this: 72 of 73 units occupied as of March 31."),
-        ("Other Non-Recurring (7100)","$9,060","$1,707","-$7,353","430% over — investigate","🔴",
-         "This is the biggest flag in March outside utilities. GL shows $9,404 debit, $345 credit = $9,060 net. Budget was only $1,707. This line typically covers one-time repairs, legal costs, or unusual expenses. The GL detail does not specify the nature — management (Kenya Owens / Beacon) should be asked what this covers. Could be a major repair, emergency service, or administrative cost. Needs clarification before next investor report."),
+        ("Other Non-Recurring (7100)","$9,060","$1,707","-$7,353","430% over","🔴",
+         "Fully documented in GL. Main drivers: (1) Rick\'s Home Service HVAC freon work on TWO units = $3,475 total — thermostat/Schrader valve/freon Apt 2-6 $1,450 + compressor/valves/freon second unit $2,025. Two freon top-ups in one month signals refrigerant leaks or aging compressors. (2) TK Elevator Corp overshot floor/relay/cut cable repair $1,469 — legitimate safety item. (3) Dickson Plumbing sewer line + pipe leaks = $2,779. (4) HD Supply range $868. (5) $345 reimbursement credit received. Net = $9,060. The dual HVAC freon jobs are the real concern — schedule inspection."),
         ("Interest Expense","$13,666","$13,666","$0","Exact","✅",
          "Berkadia mortgage interest, exactly as scheduled. Interest-only until Jan 2029."),
         ("Insurance","$4,669","$4,553","-$116","2.5% over","✅",
@@ -536,7 +740,7 @@ with tab1:
     st.markdown(f"""<div class="insight-box">
         <strong>NOI: ${MAR26['noi']:,.0f}</strong> (budget ${MAR26['budget_noi']:,}, gap of ${abs(noi_var):,.0f}).
         The shortfall comes from two sources: <strong>utilities over by $5,269</strong> (electricity/DD3)
-        and <strong>Other Non-Recurring expenses at $9,060</strong> vs $1,707 budgeted — reason unknown, needs clarification.
+        and <strong>Other Non-Recurring $9,060</strong> vs $1,707 budgeted — driven by HVAC freon work on two units ($3,475), elevator safety repair ($1,469), and plumbing ($2,779). All in GL. Key flag: two HVAC freon jobs in one month = aging refrigerant system.
         Everything else — payroll, management, vacancy, bad debt, insurance — is on or under budget.
         <strong>Occupancy at 98.6% is the strongest it has been.</strong>
         Cash position healthy at $135K.
@@ -544,7 +748,7 @@ with tab1:
 
     st.markdown('<p class="section-title">🚨 Action Items</p>',unsafe_allow_html=True)
     for level,text in [
-        ("red","🔴 INVESTIGATE — Other Non-Recurring (7100): $9,060 vs $1,707 budget (430% over). Ask Beacon Management what this covers before investor reporting."),
+        ("red","🔴 HVAC AGING — Two HVAC freon top-ups in March ($1,450 + $2,025 = $3,475 total). Back-to-back freon on separate units signals refrigerant leaks or compressor wear. Schedule HVAC inspection — at $95K+ replacement cost, early action is critical."),
         ("red","🔴 ELECTRICITY — DD3 demand charge still elevated ($1,784 in March). Install demand controller — $4-8K one-time cost saves $5-12K/yr. This is the #1 NOI lever."),
         ("yellow","🟡 WATER METER — City has not physically read the meter in 16+ months. Always 99 units estimated. Request physical read from City of Elizabeth City."),
         ("yellow","🟡 Unit C4 (Warden) — lease expired Sep 2025, balance now $5,034. Holdover tenant. Cure notice / action needed."),
@@ -899,8 +1103,8 @@ with tab4:
         st.plotly_chart(fig_wfall,use_container_width=True)
 
     st.markdown('<p class="section-title">\U0001f52c GL Drill-Down \u2014 What\'s Behind Each Over-Budget Line</p>',unsafe_allow_html=True)
-    st.caption("Source: Feb-26 & Mar-26 General Ledger | Actual transactions extracted from GL reports")
-    selected_acct = st.selectbox("Select flagged account to drill down:",list(GL_DRILLDOWN.keys()),key="gl_drill")
+    st.caption("Source: March 2026 General Ledger | Every line item read directly from actual GL | Feb items from Feb-26 GL")
+    selected_acct = st.selectbox("Select any account to see GL detail:",list(GL_DRILLDOWN.keys()),key="gl_drill")
     if selected_acct in GL_DRILLDOWN:
         drill = GL_DRILLDOWN[selected_acct]
         verdict_color = "alert-red" if "\U0001f534" in drill["verdict"] else "alert-yellow"
